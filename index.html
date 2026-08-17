@@ -364,7 +364,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
 .tx .who{font-size:14px;color:var(--ink-3)}
 
 /* sticky case navigation */
-#pnav{position:sticky;top:70px;z-index:60;background:rgba(250,247,240,.93);backdrop-filter:blur(12px);
+#pnav{position:sticky;top:70px;z-index:60;background:var(--cream);
   border-bottom:1px solid var(--line);margin-top:clamp(44px,7vh,80px)}
 .pnav-in{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
 .pnav-in::-webkit-scrollbar{display:none}
@@ -434,7 +434,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
   /* label on its own line, then before → after as one tidy left-aligned row */
   .lrow{grid-template-columns:auto auto auto;justify-content:start;gap:3px 10px}
   .lrow .lk-lbl{grid-column:1/-1;margin-bottom:3px}
-  .lrow>span:nth-child(2){display:none}
+  .lrow:not(.solo)>span:nth-child(2){display:none}
   .lrow .b4,.lrow .af{text-align:left}
 }
 .lrow .lk-lbl{color:var(--ink-2)}
@@ -445,6 +445,11 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
   padding-bottom:10px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
 .lhead span:nth-child(3),.lhead span:nth-child(5){text-align:right}
 @media(max-width:640px){.lhead{display:none}}
+/* results rows with no "before" value — label and figure, no dangling arrow */
+.lrow.solo,.lhead.solo{grid-template-columns:1fr auto}
+.lhead.solo span:nth-child(2){text-align:right}
+@media(max-width:640px){.lrow.solo{grid-template-columns:1fr auto;gap:12px}
+  .lrow.solo .lk-lbl{grid-column:1;margin-bottom:0}}
 
 /* ═══ VOICE MEMO PLAYER ═════════════════════════ */
 .vm{margin-top:clamp(26px,3.6vh,38px);border:1px solid var(--line);border-radius:var(--r);
@@ -727,7 +732,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
           <span id="mathA">6 × $1,200</span>
           <span id="mathB">6 of the 39 who didn't book — 15%</span>
         </div>
-        <p class="fine">This uses the numbers you just entered. It's an illustration of what the gap is worth, not a promise of what Kirmi Studio will recover — that depends on your treatments, your patients and your team.</p>
+        <p class="fine">These are the numbers you just entered — a picture of what the gap is worth, not a promise of what we'd recover. That depends on your treatments, your patients and your team.</p>
       </div>
     </div>
 
@@ -745,13 +750,13 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <span class="eyebrow">Proof</span>
         <h2 class="d2" style="margin-top:16px;max-width:13ch">Three clinics. Three different leaks.</h2>
       </div>
-      <p>Different businesses. Different operational problems. The same underlying issue: valuable patient demand was disappearing between interest and action.</p>
+      <p>Three clinics, three different problems. In all three, patients who wanted to come in were slipping away before anyone booked them.</p>
     </div>
 
     <div class="taxo rv">
-      <div class="tx"><span class="n">01</span><h3>New demand</h3><p class="who">Maison of Aesthetics · Chicago</p></div>
-      <div class="tx"><span class="n">02</span><h3>Operational scale</h3><p class="who">Levitate Med Spa · New York City</p></div>
-      <div class="tx"><span class="n">03</span><h3>Existing patients</h3><p class="who">Soho Skin Lab · Miami</p></div>
+      <div class="tx"><span class="n">01</span><h3>New patients</h3><p class="who">Maison of Aesthetics · Chicago</p></div>
+      <div class="tx"><span class="n">02</span><h3>Growing fast</h3><p class="who">Levitate Med Spa · New York City</p></div>
+      <div class="tx"><span class="n">03</span><h3>Past patients</h3><p class="who">Soho Skin Lab · Miami</p></div>
     </div>
   </div>
 
@@ -770,41 +775,41 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <div class="ix"><span class="c">01 / 03</span><span class="ln"></span></div>
         <h3>Maison of<br>Aesthetics</h3>
         <p class="loc">Chicago, Illinois</p>
-        <span class="leak">New-demand leakage</span>
+        <span class="leak">New patients slipping away</span>
         <p class="say">Same demand. <u>More of it reached the calendar.</u></p>
-        <p class="why">Maison wasn't short on inquiries. The gap was how many of them actually reached a consultation.</p>
+        <p class="why">Maison was never short on inquiries. The problem was how few of them ever became a consultation.</p>
       </div>
 
       <div>
         <div class="mgrid rv">
           <div class="met hero-met">
-            <span class="k">Additional booked consultations / month</span>
+            <span class="k">Extra consultations booked each month</span>
             <span class="v"><span data-cnt="21" data-pre="+">+21</span></span>
-            <p class="sub">From approximately the same inbound demand — roughly 66 to 87 booked consultations a month.</p>
+            <p class="sub">Same number of inquiries coming in as before. Around 66 a month became around 87.</p>
           </div>
           <div class="met">
-            <span class="k">Average digital response time</span>
+            <span class="k">How fast messages got answered</span>
             <span class="v"><span class="was">2 hr</span><span class="to">→</span><span data-cnt="6" data-suf=" min">6 min</span></span>
           </div>
           <div class="met">
-            <span class="k">Inquiry → consultation booking</span>
+            <span class="k">Inquiries that became consultations</span>
             <span class="v"><span class="was">22%</span><span class="to">→</span><span data-cnt="29" data-suf="%">29%</span></span>
           </div>
           <div class="met">
-            <span class="k">Missed calls / month</span>
+            <span class="k">Missed calls a month</span>
             <span class="v"><span class="was">28</span><span class="to">→</span><span data-cnt="10">10</span></span>
           </div>
           <div class="met">
-            <span class="k">Weekly repetitive follow-up</span>
+            <span class="k">Hours a week spent chasing</span>
             <span class="v"><span class="was">15 hr</span><span class="to">→</span><span data-cnt="6" data-suf=" hr">6 hr</span></span>
           </div>
         </div>
 
         <div class="ledger rv">
           <div class="lhead"><span>What changed</span><span></span><span>Before</span><span></span><span>After</span></div>
-          <div class="lrow"><span class="lk-lbl">Inquiries receiving structured follow-up</span><span></span><span class="b4">65–70%</span><span class="ar">→</span><span class="af">94%</span></div>
-          <div class="lrow"><span class="lk-lbl">Average follow-up attempts per inquiry</span><span></span><span class="b4">1–2</span><span class="ar">→</span><span class="af">4–5</span></div>
-          <div class="lrow"><span class="lk-lbl">Inquiries left insufficiently worked</span><span></span><span class="b4">~100/mo</span><span class="ar">→</span><span class="af">~15/mo</span></div>
+          <div class="lrow"><span class="lk-lbl">More inquiries actually got followed up</span><span></span><span class="b4">65–70%</span><span class="ar">→</span><span class="af">94%</span></div>
+          <div class="lrow"><span class="lk-lbl">Each patient got more chances to book</span><span></span><span class="b4">1–2</span><span class="ar">→</span><span class="af">4–5</span></div>
+          <div class="lrow"><span class="lk-lbl">Far fewer inquiries left behind</span><span></span><span class="b4">~100/mo</span><span class="ar">→</span><span class="af">~15/mo</span></div>
         </div>
 
         <div class="vm rv" data-audio="AUDIO_MAISON" data-fallback="45">
@@ -831,28 +836,28 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         </button>
         <div class="drawer" id="d1" data-open="false"><div><div class="dbody">
           <div class="dsec">
-            <h5>The situation</h5>
-            <p>Maison of Aesthetics was generating roughly 300 inbound inquiries a month across calls, web forms and social channels. Demand was not the constraint. What happened after a patient raised their hand was.</p>
-            <p>Around 28 calls a month went unanswered. Digital inquiries waited an average of two hours for a first reply. Between 65% and 70% of inquiries received any structured follow-up at all, and those that did typically received one or two attempts before the thread went quiet.</p>
+            <h5>What was happening</h5>
+            <p>About 300 people a month were getting in touch with Maison — by phone, through the website, and on social. Plenty of interest. The trouble started the moment someone raised their hand.</p>
+            <p>Roughly 28 calls a month rang out. Messages sat for about two hours before anyone replied. Only around two thirds of inquiries were followed up at all, and the ones that were usually got one or two messages before the thread went cold.</p>
           </div>
           <div class="dsec">
-            <h5>What we found</h5>
+            <h5>Why it was happening</h5>
             <ul class="dlist">
-              <li>Response speed varied with how busy the front desk happened to be that day.</li>
-              <li>Follow-up depended on someone remembering, rather than on a defined sequence.</li>
-              <li>Inquiries arriving outside opening hours were handled the following morning at the earliest.</li>
-              <li>There was no single view of which inquiries had been worked and which had not.</li>
+              <li>How quickly you got a reply depended on how busy the desk was that day.</li>
+              <li>Following up relied on someone remembering to do it.</li>
+              <li>Anyone who got in touch after closing waited until the next morning at best.</li>
+              <li>Nobody could see, in one place, who had been chased and who hadn't.</li>
             </ul>
           </div>
           <div class="dsec">
-            <h5>What changed</h5>
-            <p>We took ownership of the communication layer between the inquiry arriving and the consultation being booked. Every inbound inquiry — regardless of channel or hour — receives an immediate first response. Unanswered calls trigger a recovery message within seconds. Inquiries that go quiet move into a structured follow-up sequence of four to five attempts rather than one or two.</p>
-            <p>When a patient is ready to talk specifics, the conversation is handed to the clinic's team with the full context attached. Nothing is passed back to the front desk as an unexplained task.</p>
+            <h5>What we changed</h5>
+            <p>We took over everything that happens between someone getting in touch and them sitting down for a consultation. Every message now gets an answer straight away, whatever time it arrives and wherever it comes from. If a call is missed, we text back within seconds. If someone goes quiet, they hear from us four or five more times instead of once or twice.</p>
+            <p>When a patient is ready to talk properly, we hand them to the clinic's team with the whole conversation attached — so nobody at the front desk picks up a name with no context.</p>
           </div>
           <div class="dsec">
-            <h5>The outcome</h5>
-            <p>Average digital response time moved from roughly two hours to roughly six minutes. Missed calls fell from around 28 a month to around 10. The share of inquiries receiving structured follow-up rose from 65–70% to approximately 94%, with roughly 15 inquiries a month still left insufficiently worked.</p>
-            <p>Inquiry-to-consultation booking moved from approximately 22% to approximately 29% — around 66 to around 87 booked consultations a month, from approximately the same inbound demand. Time spent by the team on repetitive follow-up fell from roughly 15 hours a week to roughly 6.</p>
+            <h5>What happened after</h5>
+            <p>Replies went from about two hours to about six minutes. Missed calls dropped from around 28 a month to around 10. Inquiries that got followed up rose from 65–70% to about 94% — leaving roughly 15 a month still not worked properly, which we're still working on.</p>
+            <p>The share of inquiries that turned into consultations went from about 22% to about 29%. In real terms: around 66 consultations a month became around 87, with no extra inquiries coming in. And the team got about nine hours a week back — chasing dropped from roughly 15 hours to 6.</p>
           </div>
         </div></div></div>
       </div>
@@ -866,42 +871,42 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <div class="ix"><span class="c">02 / 03</span><span class="ln"></span></div>
         <h3>Levitate<br>Med Spa</h3>
         <p class="loc">New York City · 3 locations</p>
-        <span class="leak">Operational-scale leakage</span>
-        <p class="say">Three locations. <u>One communication standard.</u></p>
-        <p class="why">At three locations, communication quality could no longer depend on which front desk happened to pick up.</p>
+        <span class="leak">Growing faster than the front desk</span>
+        <p class="say">Three locations. <u>One way of looking after people.</u></p>
+        <p class="why">How well a patient was looked after depended on which of the three front desks happened to pick up.</p>
       </div>
 
       <div>
         <div class="mgrid rv">
           <div class="met hero-met">
-            <span class="k">Additional booked consultations / month</span>
+            <span class="k">Extra consultations booked each month</span>
             <span class="v"><span data-cnt="53" data-pre="+">+53</span></span>
-            <p class="sub">From approximately the same inbound demand — roughly 150 to 203 booked consultations a month across all three locations.</p>
+            <p class="sub">Same number of inquiries coming in as before. Around 150 a month became around 203, across all three locations.</p>
           </div>
           <div class="met esp">
-            <span class="k">Average digital response time</span>
+            <span class="k">How fast messages got answered</span>
             <span class="v"><span class="was">1 hr 45</span><span class="to">→</span><span data-cnt="8" data-suf=" min">8 min</span></span>
           </div>
           <div class="met esp">
-            <span class="k">Inquiry → consultation booking</span>
+            <span class="k">Inquiries that became consultations</span>
             <span class="v"><span class="was">20%</span><span class="to">→</span><span data-cnt="27" data-suf="%">27%</span></span>
           </div>
           <div class="met">
-            <span class="k">Missed calls / month</span>
+            <span class="k">Missed calls a month</span>
             <span class="v"><span class="was">65–75</span><span class="to">→</span><span data-cnt="30">30</span></span>
           </div>
           <div class="met">
-            <span class="k">Weekly repetitive follow-up</span>
+            <span class="k">Hours a week spent chasing</span>
             <span class="v"><span class="was">30 hr</span><span class="to">→</span><span data-cnt="13" data-suf=" hr">13 hr</span></span>
           </div>
         </div>
 
         <div class="ledger rv">
           <div class="lhead"><span>What changed</span><span></span><span>Before</span><span></span><span>After</span></div>
-          <div class="lrow"><span class="lk-lbl">Inquiries receiving structured follow-up</span><span></span><span class="b4">~70%</span><span class="ar">→</span><span class="af">95%</span></div>
-          <div class="lrow"><span class="lk-lbl">Average follow-up attempts per inquiry</span><span></span><span class="b4">1–2</span><span class="ar">→</span><span class="af">3–5</span></div>
-          <div class="lrow"><span class="lk-lbl">Missed calls contacted automatically</span><span></span><span class="b4">—</span><span class="ar">→</span><span class="af">86%</span></div>
-          <div class="lrow"><span class="lk-lbl">After-hours inquiries answered immediately</span><span></span><span class="b4">—</span><span class="ar">→</span><span class="af">90%+</span></div>
+          <div class="lrow"><span class="lk-lbl">More inquiries actually got followed up</span><span></span><span class="b4">~70%</span><span class="ar">→</span><span class="af">95%</span></div>
+          <div class="lrow"><span class="lk-lbl">Each patient got more chances to book</span><span></span><span class="b4">1–2</span><span class="ar">→</span><span class="af">3–5</span></div>
+          <div class="lrow"><span class="lk-lbl">Missed calls we got back to automatically</span><span></span><span class="b4">—</span><span class="ar">→</span><span class="af">86%</span></div>
+          <div class="lrow"><span class="lk-lbl">Messages after closing, answered right away</span><span></span><span class="b4">—</span><span class="ar">→</span><span class="af">90%+</span></div>
         </div>
 
         <div class="vm esp rv" data-audio="AUDIO_LEVITATE" data-fallback="39">
@@ -928,28 +933,28 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         </button>
         <div class="drawer" id="d2" data-open="false"><div><div class="dbody">
           <div class="dsec">
-            <h5>The situation</h5>
-            <p>Levitate Med Spa was operating across three locations, taking roughly 750 inbound inquiries a month, including around 360 inbound calls. The business had grown. The communication infrastructure had not grown with it.</p>
-            <p>Between 65 and 75 calls a month went unanswered. Digital inquiries waited an average of one hour and forty-five minutes. Roughly 70% received timely follow-up, and follow-up itself was manual — one or two attempts, dependent on which location and which staff member picked the inquiry up.</p>
+            <h5>What was happening</h5>
+            <p>Levitate had grown to three locations and was fielding about 750 inquiries a month, roughly 360 of them phone calls. The business had got bigger. The way patients were looked after hadn't kept up.</p>
+            <p>Somewhere between 65 and 75 calls a month went unanswered. Messages waited nearly two hours for a reply. About 70% got followed up in good time, and all of that was done by hand. One or two attempts, depending entirely on which location and which person picked it up.</p>
           </div>
           <div class="dsec">
-            <h5>What we found</h5>
+            <h5>Why it was happening</h5>
             <ul class="dlist">
-              <li>Response quality varied by location, not by patient need.</li>
-              <li>A patient could inquire at one location and be handled to a different standard than at another.</li>
-              <li>Inbound volume peaked precisely when front-desk staff were least available to answer.</li>
-              <li>After-hours inquiries accumulated overnight and were worked inconsistently the next day.</li>
+              <li>The service a patient got depended on which of the three desks answered.</li>
+              <li>The same question could be handled well at one location and poorly at another.</li>
+              <li>The busiest hours for inquiries were exactly the hours staff had least time to reply.</li>
+              <li>Messages piled up overnight and got worked through unevenly the next day.</li>
             </ul>
           </div>
           <div class="dsec">
-            <h5>What changed</h5>
-            <p>Levitate had outgrown a front-desk-only communication model. We put a single communication standard across all three locations, so the patient experience no longer depended on which desk received the inquiry.</p>
-            <p>Every inbound inquiry receives an immediate first response regardless of location or hour. Unanswered calls are contacted automatically. Follow-up runs as a defined sequence rather than a manual task, and each location retains its own calendar, its own team and its own handoff point.</p>
+            <h5>What we changed</h5>
+            <p>Three locations had outgrown what three front desks could carry. We put one consistent standard across all of them, so what a patient experiences no longer depends on where their message happens to land.</p>
+            <p>Every inquiry gets an immediate reply, whichever location it's for and whatever the hour. Missed calls get contacted without anyone lifting a finger. Follow-up happens the same way every time. Each location keeps its own calendar, its own team, and its own point where we hand the patient over.</p>
           </div>
           <div class="dsec">
-            <h5>The outcome</h5>
-            <p>Average digital response time moved from roughly one hour forty-five to roughly eight minutes. Missed calls fell from 65–75 a month to around 30, with approximately 86% of those contacted automatically. Structured follow-up rose from around 70% to approximately 95%, with three to five attempts per inquiry, and over 90% of after-hours inquiries now receive an immediate response.</p>
-            <p>Inquiry-to-consultation booking moved from approximately 20% to approximately 27% — around 150 to around 203 booked consultations a month, from approximately the same inbound demand. Time spent on repetitive initial follow-up fell from roughly 30 hours a week to roughly 13.</p>
+            <h5>What happened after</h5>
+            <p>Replies went from about an hour forty-five to about eight minutes. Missed calls fell from 65–75 a month to around 30, and about 86% of those got a message back automatically. Follow-up rose from around 70% to about 95%, with three to five attempts each. More than 90% of people who message after closing now hear back right away.</p>
+            <p>The share of inquiries that turned into consultations went from about 20% to about 27% — around 150 a month became around 203, with no extra inquiries coming in. Chasing dropped from roughly 30 hours a week to 13, across the whole group.</p>
           </div>
         </div></div></div>
       </div>
@@ -963,41 +968,41 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <div class="ix"><span class="c">03 / 03</span><span class="ln"></span></div>
         <h3>Soho<br>Skin Lab</h3>
         <p class="loc">Miami, Florida</p>
-        <span class="leak">Existing-patient leakage</span>
-        <p class="say">4,800 dormant records. <u>A measurable portion became active patients again.</u></p>
-        <p class="why">The clinic had already paid to acquire thousands of patients. The opportunity was getting them to return.</p>
+        <span class="leak">Past patients not coming back</span>
+        <p class="say">4,800 patients had drifted away. <u>A real share of them came back.</u></p>
+        <p class="why">They had already paid to win these patients once. The opportunity was simply getting them back in.</p>
       </div>
 
       <div>
         <div class="mgrid rv">
           <div class="met hero-met">
-            <span class="k">Attributable treatment revenue</span>
+            <span class="k">Revenue from patients who came back</span>
             <span class="v"><span data-cnt="125" data-pre="$" data-suf="K+">$125K+</span></span>
-            <p class="sub">First 90 days · from previously inactive patients. Attributable to the reactivation programme, not a projection.</p>
+            <p class="sub">In the first 90 days, from patients who had stopped coming. Treatment they actually paid for — not a projection.</p>
           </div>
           <div class="met">
-            <span class="k">Dormant records in the database</span>
+            <span class="k">Patients who had stopped coming</span>
             <span class="v"><span data-cnt="4800" data-comma="1">4,800</span></span>
           </div>
           <div class="met">
-            <span class="k">Actively reached in first 90 days</span>
+            <span class="k">We actually got a message to</span>
             <span class="v"><span data-cnt="3400" data-comma="1">3,400</span></span>
           </div>
           <div class="met">
-            <span class="k">Meaningful-interest responses</span>
+            <span class="k">Wrote back genuinely interested</span>
             <span class="v"><span data-cnt="260">260</span></span>
           </div>
           <div class="met">
-            <span class="k">Consultations / appointments generated</span>
+            <span class="k">Booked a consultation</span>
             <span class="v"><span data-cnt="70" data-suf="+">70+</span></span>
           </div>
         </div>
 
         <div class="ledger rv">
-          <div class="lhead"><span>Where it landed</span><span></span><span></span><span></span><span>First 90 days</span></div>
-          <div class="lrow"><span class="lk-lbl">Reactivated patients</span><span></span><span class="b4"></span><span class="ar">→</span><span class="af">40+</span></div>
-          <div class="lrow"><span class="lk-lbl">Previously inactive patients completing treatment</span><span></span><span class="b4"></span><span class="ar">→</span><span class="af">30+</span></div>
-          <div class="lrow"><span class="lk-lbl">Attributable treatment revenue</span><span></span><span class="b4"></span><span class="ar">→</span><span class="af">$125,000+</span></div>
+          <div class="lhead solo"><span>What came of it</span><span>First 90 days</span></div>
+          <div class="lrow solo"><span class="lk-lbl">Came back as patients</span><span class="af">40+</span></div>
+          <div class="lrow solo"><span class="lk-lbl">Went ahead and had treatment</span><span class="af">30+</span></div>
+          <div class="lrow solo"><span class="lk-lbl">Revenue from treatments they came back for</span><span class="af">$125,000+</span></div>
         </div>
 
         <div class="vm rv" data-audio="AUDIO_SOHO" data-fallback="41">
@@ -1024,28 +1029,28 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         </button>
         <div class="drawer" id="d3" data-open="false"><div><div class="dbody">
           <div class="dsec">
-            <h5>The situation</h5>
-            <p>Soho Skin Lab held roughly 4,800 dormant or inactive patient records — people who had previously booked, paid and been treated, and who had since stopped returning. The clinic had already carried the cost of acquiring every one of them.</p>
-            <p>Unlike the first two engagements, the leak here was not at the front of the funnel. New inquiries were being handled. The value sitting unworked was behind the clinic, not ahead of it.</p>
+            <h5>What was happening</h5>
+            <p>Soho Skin Lab had about 4,800 patients on file who had gone quiet — people who had booked before, paid before, been treated before, and simply stopped coming. The clinic had already paid to win every single one of them.</p>
+            <p>This one is different from the other two. New inquiries were being handled fine. The money sitting untouched was behind the clinic, not in front of it.</p>
           </div>
           <div class="dsec">
-            <h5>What we found</h5>
+            <h5>Why it was happening</h5>
             <ul class="dlist">
-              <li>Dormant records were spread across systems with no consistent definition of "inactive".</li>
-              <li>Past outreach had been occasional, manual and untracked.</li>
-              <li>There was no way to tell which previous patients were realistically reachable.</li>
-              <li>No mechanism existed to route an interested former patient back to a booked appointment.</li>
+              <li>These patients were scattered across different systems, with no agreed idea of what "stopped coming" even meant.</li>
+              <li>Reaching out had only ever happened now and then, by hand, with no record of it.</li>
+              <li>There was no way to tell who was still realistically worth contacting.</li>
+              <li>Even when an old patient did show interest, nothing carried them through to a booking.</li>
             </ul>
           </div>
           <div class="dsec">
-            <h5>What changed</h5>
-            <p>We consolidated and segmented the dormant records, then ran a structured reactivation programme against them over the first 90 days. Outreach was paced and personalised by treatment history rather than sent as a single broadcast.</p>
-            <p>Patients who responded with genuine interest were moved into the same conversation and booking layer we run for new inquiries, so an interested former patient reaches a consultation rather than a dead end.</p>
+            <h5>What we changed</h5>
+            <p>We pulled all those patients into one place and sorted them by what they'd had done before. Then, over 90 days, we got back in touch — spread out over time and written around their own treatment history, rather than one mass message to everybody.</p>
+            <p>Anyone who replied with real interest went straight into the same conversation and booking process we run for new inquiries. So an old patient who's tempted actually reaches a consultation instead of a dead end.</p>
           </div>
           <div class="dsec">
-            <h5>The outcome</h5>
-            <p>Approximately 3,400 dormant patients were actively reached during the first 90 days. Around 260 responded with meaningful interest. That produced over 70 consultations and appointments, more than 40 reactivated patients, and over 30 previously inactive patients completing treatment.</p>
-            <p>Approximately $125,000+ in attributable treatment revenue was recorded during the initial 90-day period, from previously inactive patients. This figure reflects treatment actually delivered and attributed to the reactivation programme. It is not a projection, and it does not imply that every dormant record represented a buyer.</p>
+            <h5>What happened after</h5>
+            <p>In the first 90 days we got a message to about 3,400 of them. Around 260 wrote back genuinely interested. That turned into more than 70 consultations and appointments, more than 40 patients coming back, and more than 30 going ahead with treatment.</p>
+            <p>That came to over $125,000 in treatment revenue from patients who had stopped coming. To be clear about what that number is: it's treatment actually delivered and paid for during those 90 days, traced back to this work. It isn't a forecast, and it doesn't mean every one of those 4,800 was ever going to buy.</p>
           </div>
         </div></div></div>
       </div>
@@ -1058,39 +1063,39 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
   <div class="wrap">
     <div class="rv" style="max-width:22ch">
       <span class="eyebrow">Read together</span>
-      <h2 class="d2" style="margin-top:16px">Three types of leakage.</h2>
+      <h2 class="d2" style="margin-top:16px">Three ways clinics lose patients.</h2>
     </div>
 
     <div class="stab rv">
       <div class="scol">
         <p class="cn">Maison of Aesthetics</p>
-        <p class="ct">New demand</p>
-        <div class="srow"><span>Inbound inquiries</span><b>~300 / mo</b></div>
-        <div class="srow"><span>Inquiry → consultation</span><b>22% → 29%</b></div>
-        <div class="srow"><span>Response time</span><b>2 hr → 6 min</b></div>
-        <div class="srow"><span>Net effect</span><b>+21 consults / mo</b></div>
+        <p class="ct">New patients slipping away</p>
+        <div class="srow"><span>Inquiries a month</span><b>~300 / mo</b></div>
+        <div class="srow"><span>Turned into consultations</span><b>22% → 29%</b></div>
+        <div class="srow"><span>Reply speed</span><b>2 hr → 6 min</b></div>
+        <div class="srow"><span>What it added up to</span><b>+21 consults / mo</b></div>
       </div>
       <div class="scol">
         <p class="cn">Levitate Med Spa</p>
-        <p class="ct">Operational scale</p>
-        <div class="srow"><span>Inbound inquiries</span><b>~750 / mo</b></div>
-        <div class="srow"><span>Inquiry → consultation</span><b>20% → 27%</b></div>
-        <div class="srow"><span>Response time</span><b>1 hr 45 → 8 min</b></div>
-        <div class="srow"><span>Net effect</span><b>+53 consults / mo</b></div>
+        <p class="ct">Growing faster than the desk</p>
+        <div class="srow"><span>Inquiries a month</span><b>~750 / mo</b></div>
+        <div class="srow"><span>Turned into consultations</span><b>20% → 27%</b></div>
+        <div class="srow"><span>Reply speed</span><b>1 hr 45 → 8 min</b></div>
+        <div class="srow"><span>What it added up to</span><b>+53 consults / mo</b></div>
       </div>
       <div class="scol">
         <p class="cn">Soho Skin Lab</p>
-        <p class="ct">Existing patients</p>
-        <div class="srow"><span>Dormant records</span><b>~4,800</b></div>
-        <div class="srow"><span>Actively reached</span><b>~3,400</b></div>
-        <div class="srow"><span>Completed treatment</span><b>30+</b></div>
-        <div class="srow"><span>Net effect</span><b>$125K+ / 90 days</b></div>
+        <p class="ct">Past patients not coming back</p>
+        <div class="srow"><span>Patients gone quiet</span><b>~4,800</b></div>
+        <div class="srow"><span>We reached</span><b>~3,400</b></div>
+        <div class="srow"><span>Had treatment</span><b>30+</b></div>
+        <div class="srow"><span>What it added up to</span><b>$125K+ / 90 days</b></div>
       </div>
     </div>
 
     <div class="sconc rv">
       <span class="eyebrow">The principle</span>
-      <p class="big-say" style="max-width:26ch">Different leaks. Same principle: <u>make more of the demand you already paid to create actually reach the patient.</u></p>
+      <p class="big-say" style="max-width:27ch">Three different problems. One idea: <u>the patients you already paid to reach should actually make it into your chair.</u></p>
     </div>
   </div>
 </section>
@@ -1099,32 +1104,32 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
 <section class="sec g-bone">
   <div class="wrap">
     <div class="rv" style="max-width:26ch">
-      <span class="eyebrow">What we own</span>
-      <h2 class="d2" style="margin-top:16px">Behind the scenes, we own the communication layer.</h2>
+      <span class="eyebrow">What we take on</span>
+      <h2 class="d2" style="margin-top:16px">We look after every patient who gets in touch.</h2>
     </div>
 
     <div class="flow rv">
       <div class="fnode"><span class="n">01</span><h4>Inquiry</h4><p>A call, a message, a form — any channel, any hour.</p></div>
       <div class="fnode"><span class="n">02</span><h4>Response</h4><p>Answered in minutes, not when the desk frees up.</p></div>
-      <div class="fnode"><span class="n">03</span><h4>Follow-up</h4><p>A defined sequence, not someone remembering.</p></div>
-      <div class="fnode"><span class="n">04</span><h4>Human handoff</h4><p>Passed to your team with the full context attached.</p></div>
+      <div class="fnode"><span class="n">03</span><h4>Follow-up</h4><p>Every time, not only when someone remembers.</p></div>
+      <div class="fnode"><span class="n">04</span><h4>Over to you</h4><p>Handed to your team knowing the whole story.</p></div>
       <div class="fnode"><span class="n">05</span><h4>Booking</h4><p>Into your calendar, on your terms.</p></div>
       <div class="fnode"><span class="n">06</span><h4>Reminder</h4><p>Confirmation, nudge, morning-of note. Fewer empty chairs.</p></div>
       <div class="fnode"><span class="n">07</span><h4>Return</h4><p>Past patients invited back before they drift elsewhere.</p></div>
-      <div class="fnode"><span class="n">08</span><h4>Visibility</h4><p>Who asked, who was answered, who booked.</p></div>
+      <div class="fnode"><span class="n">08</span><h4>You can see it all</h4><p>You see who asked, who was answered, who booked.</p></div>
     </div>
 
     <div class="own rv">
       <div>
-        <h3 class="d3">Not eight products.<br>One layer.</h3>
-        <p>Missed-call recovery, inquiry follow-up, reminders, reactivation, review requests and visibility are not separate things to buy. They are parts of the operating layer we run around your clinic.</p>
+        <h3 class="d3">Not eight tools.<br>One job.</h3>
+        <p>Catching missed calls, following up, sending reminders, bringing old patients back, asking for reviews, showing you what happened — these aren't separate things to buy. They're one job, and we do it for you.</p>
       </div>
       <ul class="ownlist">
         <li>We don't hand you a workflow and disappear.</li>
-        <li>We stay <b>responsible</b> for the communication layer.</li>
-        <li>We monitor what happens after launch.</li>
-        <li>We look for where opportunities are still falling through.</li>
-        <li>We adjust the system as the clinic changes.</li>
+        <li>We stay <b>responsible</b> for it, month after month.</li>
+        <li>We watch what happens after it goes live.</li>
+        <li>We keep looking for patients still slipping through.</li>
+        <li>We change it as your clinic changes.</li>
       </ul>
     </div>
   </div>
@@ -1169,7 +1174,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
           <li>A feeling that the follow-up could be tighter</li>
           <li>A preference for it handled, not another tool to manage</li>
         </ul>
-        <p style="margin-top:22px;font-size:14.5px;line-height:1.55;color:var(--don-3);max-width:38ch">We're a better fit for established clinics already generating meaningful inbound demand.</p>
+        <p style="margin-top:22px;font-size:14.5px;line-height:1.55;color:var(--don-3);max-width:38ch">We're the right fit for established clinics that already get a real flow of inquiries.</p>
       </div>
 
       <div class="quiz rv" id="quiz">

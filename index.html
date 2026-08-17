@@ -1323,10 +1323,12 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
                   Notification to you: Calendly does this itself. In
                   Calendly → Event Types → your event → Notifications,
                   keep "Email notifications to host" on and you get a mail
-                  the moment a discovery call is booked. The invitee gets
-                  the calendar invite automatically; add reminders there
-                  too (Workflows → Send reminder email) if you want the
-                  12-hour and 30-minute nudges the panel promises.
+                  the moment a discovery call is booked. This works on every
+                  plan, free included.
+
+                  The invitee always gets the booking confirmation and the
+                  calendar invite. Reminders BEFORE the call are separate —
+                  see CALENDLY_REMINDERS below.
 
                   Leave '' and the quiz stops after the contact step and
                   honestly says you will come back to them — it never
@@ -1347,6 +1349,18 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
    PORTRAITS      The three owner photos, inlined for the same reason.
    ═══════════════════════════════════════════════════════════════ */
 var CALENDLY_URL  = '';   /* ← paste your Calendly event link here */
+
+/* Reminder emails before the call are NOT automatic — they come from Calendly
+   Workflows, which is a paid feature (Standard and up). The free plan sends the
+   booking confirmation and calendar invite, and nothing after that.
+
+   So this stays empty until the Workflow actually exists, and the page says
+   nothing about reminders until it does. Once you have set one up, write the
+   real timing here and the sentence appears, e.g.:
+     var CALENDLY_REMINDERS = '12 hours and again 30 minutes';
+   Keep the wording matched to the Workflow you built — if you only set up one
+   reminder, say one. */
+var CALENDLY_REMINDERS = '';
 var FORM_ENDPOINT = 'https://api.web3forms.com/submit';
 var FORM_KEY      = '897cc5b2-35cd-47be-8bbb-666a1ac3632e';
 var CONTACT_EMAIL = 'kirmistudio@gmail.com';
@@ -2488,8 +2502,10 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       w.innerHTML = head +
         '<div class="calWrap"><div class="calLoad"><i></i><span>Loading available times…</span></div>' +
         '<iframe class="calFrame" title="Choose a day and time for your call" scrolling="no"></iframe></div>' +
-        '<p class="calNote">Once you pick a slot the invite lands in your inbox with the call link, ' +
-        'plus a reminder 12 hours before and again 30 minutes before we speak.</p>';
+        '<p class="calNote">Once you pick a slot, Calendly emails you the confirmation with the ' +
+        'call link and puts it in your calendar.' +
+        (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
+        '</p>';
       stage.innerHTML = ''; stage.appendChild(w);
 
       var frame = $('.calFrame', w), load = $('.calLoad', w);
@@ -2528,8 +2544,10 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     $('#doneRecap').textContent = answers.clinic + ' · ' + answers.city + ' · ' + tzLabel(answers.timezone);
     if(booked){
       $('#doneTitle').textContent = 'You\u2019re booked';
-      $('#doneMsg').textContent   = 'The invite is on its way to ' + answers.email +
-        ', with the call link and reminders before we speak. Talk soon.';
+      $('#doneMsg').textContent   = 'Calendly has sent the confirmation to ' + answers.email +
+        ' with the call link, and it\u2019s in your calendar.' +
+        (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
+        ' Talk soon.';
     }
     var q = $('#quiz');
     if(q && !reduce) setTimeout(function(){

@@ -385,11 +385,15 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
 /* case block */
 /* clears the fixed header plus the sticky case nav, so an anchored jump never
    lands with the headline metric hidden behind them */
-.case{border-top:1px solid var(--line);scroll-margin-top:140px}
+.case{border-top:1px solid var(--line);scroll-margin-top:132px}
 .case:first-of-type{border-top:0}
 .cgrid{display:grid;grid-template-columns:.82fr 1.18fr;gap:clamp(26px,4.6vw,70px);
   padding-block:clamp(50px,8vh,96px);align-items:start}
 @media(max-width:1000px){.cgrid{grid-template-columns:1fr;gap:32px}}
+/* the sticky chrome is shorter on phones — match the offset to it, and don't
+   stack a big top padding on top of the gap it already leaves */
+@media(max-width:620px){.case{scroll-margin-top:106px}
+  .cgrid{padding-block:34px 44px}}
 .rail{position:sticky;top:132px}
 @media(max-width:1000px){.rail{position:static}}
 .rail .ix{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
@@ -776,7 +780,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <h3>Maison of<br>Aesthetics</h3>
         <p class="loc">Chicago, Illinois</p>
         <span class="leak">New patients slipping away</span>
-        <p class="say">Same demand. <u>More of it reached the calendar.</u></p>
+        <p class="say">Same demand. <u>21 more consultations a month.</u></p>
         <p class="why">Maison was never short on inquiries. The problem was how few of them ever became a consultation.</p>
       </div>
 
@@ -837,27 +841,28 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <div class="drawer" id="d1" data-open="false"><div><div class="dbody">
           <div class="dsec">
             <h5>What was happening</h5>
-            <p>About 300 people a month were getting in touch with Maison — by phone, through the website, and on social. Plenty of interest. The trouble started the moment someone raised their hand.</p>
-            <p>Roughly 28 calls a month rang out. Messages sat for about two hours before anyone replied. Only around two thirds of inquiries were followed up at all, and the ones that were usually got one or two messages before the thread went cold.</p>
+            <p>About 300 people a month were getting in touch. Plenty of interest — the trouble started the moment someone raised their hand.</p>
+            <p>Roughly 28 calls a month rang out. Messages sat about two hours before anyone replied. Only two thirds of inquiries were followed up at all, and those usually got one or two messages before going cold.</p>
           </div>
           <div class="dsec">
-            <h5>Why it was happening</h5>
+            <h5>Why it mattered</h5>
+            <p>Every one of those people had already chosen Maison and asked. They were being lost after the hard part was done.</p>
             <ul class="dlist">
-              <li>How quickly you got a reply depended on how busy the desk was that day.</li>
-              <li>Following up relied on someone remembering to do it.</li>
-              <li>Anyone who got in touch after closing waited until the next morning at best.</li>
-              <li>Nobody could see, in one place, who had been chased and who hadn't.</li>
+              <li>How fast you got a reply depended on how busy the desk was that day.</li>
+              <li>Following up relied on someone remembering.</li>
+              <li>Anyone who got in touch after closing waited until morning at best.</li>
+              <li>Nobody could see who had been chased and who hadn't.</li>
             </ul>
           </div>
           <div class="dsec">
-            <h5>What we changed</h5>
-            <p>We took over everything that happens between someone getting in touch and them sitting down for a consultation. Every message now gets an answer straight away, whatever time it arrives and wherever it comes from. If a call is missed, we text back within seconds. If someone goes quiet, they hear from us four or five more times instead of once or twice.</p>
-            <p>When a patient is ready to talk properly, we hand them to the clinic's team with the whole conversation attached — so nobody at the front desk picks up a name with no context.</p>
+            <h5>What changed</h5>
+            <p>Every message now gets an answer straight away, whatever the hour. Missed calls get a text back within seconds. Anyone who goes quiet hears from us four or five more times instead of once or twice.</p>
+            <p>When someone's ready to talk properly, the clinic's team picks up the whole conversation — not a name with no context.</p>
           </div>
           <div class="dsec">
             <h5>What happened after</h5>
-            <p>Replies went from about two hours to about six minutes. Missed calls dropped from around 28 a month to around 10. Inquiries that got followed up rose from 65–70% to about 94% — leaving roughly 15 a month still not worked properly, which we're still working on.</p>
-            <p>The share of inquiries that turned into consultations went from about 22% to about 29%. In real terms: around 66 consultations a month became around 87, with no extra inquiries coming in. And the team got about nine hours a week back — chasing dropped from roughly 15 hours to 6.</p>
+            <p>Replies went from about two hours to six minutes. Missed calls dropped from 28 a month to 10. Inquiries that got followed up rose from 65–70% to about 94%, leaving roughly 15 a month still not worked properly.</p>
+            <p>Inquiries that became consultations went from about 22% to 29% — around 66 a month to around 87, with no extra inquiries coming in. The team got nine hours a week back.</p>
           </div>
         </div></div></div>
       </div>
@@ -872,7 +877,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <h3>Levitate<br>Med Spa</h3>
         <p class="loc">New York City · 3 locations</p>
         <span class="leak">Growing faster than the front desk</span>
-        <p class="say">Three locations. <u>One way of looking after people.</u></p>
+        <p class="say">Three locations. <u>53 more consultations a month.</u></p>
         <p class="why">How well a patient was looked after depended on which of the three front desks happened to pick up.</p>
       </div>
 
@@ -934,27 +939,27 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <div class="drawer" id="d2" data-open="false"><div><div class="dbody">
           <div class="dsec">
             <h5>What was happening</h5>
-            <p>Levitate had grown to three locations and was fielding about 750 inquiries a month, roughly 360 of them phone calls. The business had got bigger. The way patients were looked after hadn't kept up.</p>
-            <p>Somewhere between 65 and 75 calls a month went unanswered. Messages waited nearly two hours for a reply. About 70% got followed up in good time, and all of that was done by hand. One or two attempts, depending entirely on which location and which person picked it up.</p>
+            <p>Three locations, about 750 inquiries a month, roughly 360 of them phone calls. The business had got bigger. The way patients were looked after hadn't kept up.</p>
+            <p>Between 65 and 75 calls a month went unanswered. Messages waited nearly two hours. About 70% got followed up in good time, all of it by hand — one or two attempts, depending on which location and which person picked it up.</p>
           </div>
           <div class="dsec">
-            <h5>Why it was happening</h5>
+            <h5>Why it mattered</h5>
+            <p>The same patient could be looked after well at one location and badly at another. At three sites, that inconsistency is the business.</p>
             <ul class="dlist">
-              <li>The service a patient got depended on which of the three desks answered.</li>
-              <li>The same question could be handled well at one location and poorly at another.</li>
-              <li>The busiest hours for inquiries were exactly the hours staff had least time to reply.</li>
-              <li>Messages piled up overnight and got worked through unevenly the next day.</li>
+              <li>The service someone got depended on which of the three desks answered.</li>
+              <li>The busiest hours were exactly when staff had least time to reply.</li>
+              <li>Messages piled up overnight and got worked through unevenly.</li>
             </ul>
           </div>
           <div class="dsec">
-            <h5>What we changed</h5>
-            <p>Three locations had outgrown what three front desks could carry. We put one consistent standard across all of them, so what a patient experiences no longer depends on where their message happens to land.</p>
-            <p>Every inquiry gets an immediate reply, whichever location it's for and whatever the hour. Missed calls get contacted without anyone lifting a finger. Follow-up happens the same way every time. Each location keeps its own calendar, its own team, and its own point where we hand the patient over.</p>
+            <h5>What changed</h5>
+            <p>One standard across all three, so what a patient gets no longer depends on where their message lands. Every inquiry gets an immediate reply, whatever the location or hour. Missed calls get contacted automatically.</p>
+            <p>Each location keeps its own calendar, its own team, and its own handover point.</p>
           </div>
           <div class="dsec">
             <h5>What happened after</h5>
-            <p>Replies went from about an hour forty-five to about eight minutes. Missed calls fell from 65–75 a month to around 30, and about 86% of those got a message back automatically. Follow-up rose from around 70% to about 95%, with three to five attempts each. More than 90% of people who message after closing now hear back right away.</p>
-            <p>The share of inquiries that turned into consultations went from about 20% to about 27% — around 150 a month became around 203, with no extra inquiries coming in. Chasing dropped from roughly 30 hours a week to 13, across the whole group.</p>
+            <p>Replies went from about an hour forty-five to eight minutes. Missed calls fell from 65–75 a month to around 30, with about 86% contacted automatically. Follow-up rose from around 70% to 95%. More than 90% of people who message after closing now hear back right away.</p>
+            <p>Inquiries that became consultations went from about 20% to 27% — around 150 a month to around 203, with no extra inquiries coming in. Chasing dropped from 30 hours a week to 13 across the group.</p>
           </div>
         </div></div></div>
       </div>
@@ -969,7 +974,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <h3>Soho<br>Skin Lab</h3>
         <p class="loc">Miami, Florida</p>
         <span class="leak">Past patients not coming back</span>
-        <p class="say">4,800 patients had drifted away. <u>A real share of them came back.</u></p>
+        <p class="say">4,800 patients had drifted away. <u>Enough came back to bring in $125K.</u></p>
         <p class="why">They had already paid to win these patients once. The opportunity was simply getting them back in.</p>
       </div>
 
@@ -1030,27 +1035,27 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <div class="drawer" id="d3" data-open="false"><div><div class="dbody">
           <div class="dsec">
             <h5>What was happening</h5>
-            <p>Soho Skin Lab had about 4,800 patients on file who had gone quiet — people who had booked before, paid before, been treated before, and simply stopped coming. The clinic had already paid to win every single one of them.</p>
+            <p>Soho Skin Lab had about 4,800 patients on file who had gone quiet — people who had booked, paid and been treated before, and simply stopped coming back.</p>
             <p>This one is different from the other two. New inquiries were being handled fine. The money sitting untouched was behind the clinic, not in front of it.</p>
           </div>
           <div class="dsec">
-            <h5>Why it was happening</h5>
+            <h5>Why it mattered</h5>
+            <p>The clinic had already paid to win every one of these patients once. Getting them back costs nothing like winning a new one.</p>
             <ul class="dlist">
-              <li>These patients were scattered across different systems, with no agreed idea of what "stopped coming" even meant.</li>
-              <li>Reaching out had only ever happened now and then, by hand, with no record of it.</li>
-              <li>There was no way to tell who was still realistically worth contacting.</li>
-              <li>Even when an old patient did show interest, nothing carried them through to a booking.</li>
+              <li>They were scattered across different systems, with no agreed idea of what "stopped coming" even meant.</li>
+              <li>Reaching out had only happened now and then, by hand, with no record of it.</li>
+              <li>Even when an old patient showed interest, nothing carried them through to a booking.</li>
             </ul>
           </div>
           <div class="dsec">
-            <h5>What we changed</h5>
-            <p>We pulled all those patients into one place and sorted them by what they'd had done before. Then, over 90 days, we got back in touch — spread out over time and written around their own treatment history, rather than one mass message to everybody.</p>
-            <p>Anyone who replied with real interest went straight into the same conversation and booking process we run for new inquiries. So an old patient who's tempted actually reaches a consultation instead of a dead end.</p>
+            <h5>What changed</h5>
+            <p>We got back in touch over 90 days — spread out over time and written around what each person had actually had done, rather than one mass message to everybody.</p>
+            <p>Anyone who replied with real interest went straight into the same booking process we run for new inquiries, so a tempted old patient reaches a consultation instead of a dead end.</p>
           </div>
           <div class="dsec">
             <h5>What happened after</h5>
-            <p>In the first 90 days we got a message to about 3,400 of them. Around 260 wrote back genuinely interested. That turned into more than 70 consultations and appointments, more than 40 patients coming back, and more than 30 going ahead with treatment.</p>
-            <p>That came to over $125,000 in treatment revenue from patients who had stopped coming. To be clear about what that number is: it's treatment actually delivered and paid for during those 90 days, traced back to this work. It isn't a forecast, and it doesn't mean every one of those 4,800 was ever going to buy.</p>
+            <p>We got a message to about 3,400 of them. Around 260 wrote back genuinely interested. That became more than 70 consultations, more than 40 patients coming back, and more than 30 going ahead with treatment.</p>
+            <p>That came to over $125,000 in treatment revenue from patients who had stopped coming. To be clear about that number: it's treatment actually delivered and paid for in those 90 days. It isn't a forecast, and it doesn't mean all 4,800 were ever going to buy.</p>
           </div>
         </div></div></div>
       </div>
@@ -1149,9 +1154,9 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
       <div class="pr"><span class="n">04</span><h4>We run it</h4><p>Month after month. Not handed over to you — kept on our desk.</p></div>
     </div>
     <div class="stand rv bridge">
-      <p class="big-say">Your clinic probably doesn't have exactly the same leak as these three.</p>
-      <p>The useful question is where yours is.</p>
-      <a class="btn" href="#book">Find the leak <span class="arw">→</span></a>
+      <p class="big-say">Your clinic probably isn't losing patients the same way these three were.</p>
+      <p>The useful question is where yours are going.</p>
+      <a class="btn" href="#book">Find out where <span class="arw">→</span></a>
     </div>
   </div>
 </section>
@@ -1220,7 +1225,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
   </div>
 </footer>
 
-<div id="sticky"><a href="#worth" id="stickyA"><span class="lbl" id="stickyT">See what the gap is costing you</span> <span class="arw">→</span></a></div>
+<div id="sticky"><a href="#worth" id="stickyA"><span class="lbl" id="stickyT">See how much you're losing</span> <span class="arw">→</span></a></div>
 
 <script>
 (function(){
@@ -1229,24 +1234,41 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
 /* ═══════════════════════════════════════════════════════════════
    CONFIG — set these and the site is live.
 
-   SCHEDULER_URL  Your real Calendly / Acuity link. When set, the quiz is
-                  replaced by the live scheduler, which owns availability:
-                  your hours, existing meetings, buffers, notice and blocked
-                  days are all respected, and it sends the invite itself.
-                  Leave '' and the quiz collects a request instead — it never
+   SCHEDULER_URL  Your booking page. Paste the link and the quiz hands
+                  straight over to it once the six questions are answered,
+                  so the visitor picks a real slot without leaving the page.
+                  The scheduler owns availability: your hours, existing
+                  meetings, buffers, notice and blocked days are respected,
+                  and it sends the calendar invite itself.
+
+                  To book onto your own Google Calendar with no third party:
+                    calendar.google.com → Create → Appointment schedule
+                    → set your hours → Share → copy the booking page link
+                    (it looks like calendar.google.com/calendar/appointments/
+                    schedules/AcZ…). Paste it below. Bookings land directly
+                    in that Google Calendar.
+                  Calendly, Acuity and Cal.com links work here too.
+
+                  Leave '' and the quiz just collects a request — it never
                   claims a meeting is confirmed.
-   FORM_KEY       Web3Forms access key, for the quiz submission.
-   CONTACT_EMAIL  Shown in the footer. Swap for your business address.
+
+   FORM_KEY       Web3Forms access key. Get one free at web3forms.com by
+                  entering the inbox you want the answers delivered to.
+                  The key is all that goes in this page — the destination
+                  address is held on their side and never appears in the
+                  markup, so visitors (and scrapers) never see it.
+   CONTACT_EMAIL  The address behind the footer "Email" link. This one IS
+                  visible to anyone who clicks it, unlike the form above.
    AUDIO          The three client voice messages. Paths are relative to
                   index.html — the files ship in assets/audio/.
    PORTRAITS      Optional owner photos for the voice cards. Drop the files
                   in assets/img/ and they appear; leave a path empty (or the
                   file missing) and the card falls back to a monogram.
    ═══════════════════════════════════════════════════════════════ */
-var SCHEDULER_URL = '';
+var SCHEDULER_URL = '';   /* ← paste your Google Appointment Schedule link here */
 var FORM_ENDPOINT = 'https://api.web3forms.com/submit';
-var FORM_KEY      = '';
-var CONTACT_EMAIL = 'ismaelkirmiii@gmail.com';
+var FORM_KEY      = '';   /* ← paste your Web3Forms key here (delivers to kirmistudio@gmail.com) */
+var CONTACT_EMAIL = 'kirmistudio@gmail.com';
 
 var AUDIO = {
   AUDIO_MAISON:   'assets/audio/melody-maison.mp3',
@@ -1411,8 +1433,8 @@ var voiceCards = $$('.vm');
 
 /* two states: before the calculator is read, point at it; after, point at the call */
 var CTA = {
-  calc: { href:'#worth', text:'See what the gap is costing you' },
-  book: { href:'#book',  text:"Find my clinic's leak" }
+  calc: { href:'#worth', text:"See how much you're losing" },
+  book: { href:'#book',  text:"Find where you're losing patients" }
 };
 var ctaMode = '';
 function setCta(mode){
@@ -1758,16 +1780,38 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
 
 /* ── booking quiz ───────────────────────────────── */
 (function(){
-  /* A real scheduler always wins. */
-  if(SCHEDULER_URL){
+
+  /* Builds the embed URL for whichever scheduler is configured. Google
+     Appointment Schedules want ?gv=true; Calendly-style hosts want the
+     embed pair. Sending Calendly's params to Google just breaks the page,
+     so branch on the host rather than appending both. */
+  function schedulerSrc(){
+    if(!SCHEDULER_URL) return '';
     var tz = '';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){}
-    $('#schedFrame').src = SCHEDULER_URL + (SCHEDULER_URL.indexOf('?') > -1 ? '&' : '?')
+    var join = SCHEDULER_URL.indexOf('?') > -1 ? '&' : '?';
+    if(/calendar\.google\.com/i.test(SCHEDULER_URL)){
+      return SCHEDULER_URL + join + 'gv=true';
+    }
+    return SCHEDULER_URL + join
       + 'embed_domain=' + encodeURIComponent(location.hostname) + '&embed_type=Inline'
       + (tz ? '&timezone=' + encodeURIComponent(tz) : '');
+  }
+
+  /* Hands the visitor to the live calendar once the quiz is done, so they
+     pick a real slot instead of waiting on a reply. Prefills what we can. */
+  function openScheduler(answers){
+    var src = schedulerSrc();
+    if(!src) return false;
+    if(answers){
+      if(answers.name)  src += '&name='  + encodeURIComponent(answers.name);
+      if(answers.email) src += '&email=' + encodeURIComponent(answers.email);
+    }
+    $('#schedFrame').src = src;
     $('#schedWrap').classList.remove('hide');
     $('#quizMain').classList.add('hide');
-    return;
+    $('#qDone').classList.remove('on');
+    return true;
   }
 
   var CITIES = [
@@ -1974,13 +2018,20 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
 
     function finish(){
       bar.style.width = '100%';
+      /* If a live calendar is configured, let them book a real slot now
+         rather than telling them we'll be in touch. */
+      if(openScheduler(answers)) return;
       $('#quizMain').classList.add('hide');
       $('#qDone').classList.add('on');
       $('#doneRecap').textContent = answers.clinic + ' · ' + answers.city + ' · ' + tzLabel(answers.timezone);
     }
 
     if(!FORM_KEY){
-      err.textContent = 'Not connected yet — add FORM_KEY (or SCHEDULER_URL) in the script config to take live requests.';
+      /* Nothing configured yet. Don't show a visitor a config note — send
+         them somewhere that works. */
+      if(openScheduler(answers)) return;
+      err.innerHTML = 'We couldn\'t send that just now — please reach us at ' +
+        '<a href="mailto:' + CONTACT_EMAIL + '" style="color:inherit">' + CONTACT_EMAIL + '</a>.';
       return;
     }
 

@@ -2545,7 +2545,7 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       /* The calendar is opened in the clinic's own zone, so say which one —
          no second time-zone decision to make. */
       hint = answers.timezone
-        ? 'Shown in ' + tzLabel(answers.timezone) + ' — your clinic\u2019s time. Anything already taken won\u2019t show.'
+        ? 'Shown in ' + tzLabel(answers.timezone) + ' — your clinic\u2019s timezone'
         : 'Anything already taken won\u2019t show.';
     }
     var head = '<h4>' + s.q + '</h4><p class="hint">' + hint + '</p>';

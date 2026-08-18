@@ -2606,10 +2606,10 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     $('#doneRecap').textContent = answers.clinic + ' · ' + answers.city + ' · ' + tzLabel(answers.timezone);
     if(booked){
       $('#doneTitle').textContent = 'You\u2019re booked';
-      $('#doneMsg').textContent   = 'We\u2019ve sent your confirmation to ' + answers.email +
+      $('#doneMsg').textContent   = 'We\u2019ve sent you a confirmation to ' + answers.email +
         ' with the meeting link.' +
         (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
-        ' Talk soon.';
+        ' Talk soon!';
     }
     var q = $('#quiz');
     if(q && !reduce) setTimeout(function(){

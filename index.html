@@ -367,7 +367,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
    phone — you had to scroll a screen and a half to get past it. It now scales
    with the viewport and stays capped, and the copy around it is tightened so
    more of the panel is calendar and less is chrome. */
-.calWrap{position:relative;flex:1 1 auto;height:clamp(400px,54vh,520px);min-height:0;margin-top:2px;
+.calWrap{position:relative;flex:1 1 auto;height:clamp(370px,52vh,520px);min-height:0;margin-top:2px;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--cream)}
 .calFrame{width:100%;height:100%;min-height:0;border:0;display:block;background:var(--cream)}
 .qq.schedq h4{font-size:clamp(20px,2.4vw,27px);margin-bottom:5px}
@@ -384,6 +384,17 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
 @keyframes calSpin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.calLoad i{animation-duration:2.4s}}
 .calNote{margin-top:10px;font-size:12.5px;line-height:1.45;color:var(--ink-3);max-width:56ch}
+/* A cross-origin calendar that refuses to render still fires load, so the page
+   cannot tell. The way out is always present: a quiet link under a working
+   embed, and the whole button in place of the frame when we already know an
+   embed is impossible. */
+.calBtn{display:none;width:100%}
+.calEsc{display:inline-block;margin-top:10px;font-size:12.5px;color:var(--ink-3);
+  text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:2px;
+  transition:color .2s,border-color .2s}
+.calEsc:hover{color:var(--forest);border-bottom-color:var(--forest)}
+.qq.noframe .calWrap,.qq.noframe .calEsc{display:none}
+.qq.noframe .calBtn{display:inline-flex}
 .hide{display:none!important}
 
 /* ═══ STICKY CTA ════════════════════════════════ */
@@ -1908,9 +1919,22 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
      The colours are passed through so the calendar reads as part of the
      page rather than a pasted-in widget. */
   function calendlySrc(answers){
-    if(!CALENDLY_URL) return '';
+    var s = scheduler(answers);
+    return s ? (s.embed || s.link) : '';
+  }
+
+  /* Returns the embeddable URL and the plain one.
+
+     An embed only works from a real http(s) page: the booking host checks the
+     embed_domain against the page's origin. Opened straight off disk there is
+     no domain to send, the embed is refused, and the visitor is left staring
+     at a blank white box with no way to book. Same thing happens behind an ad
+     blocker or a corporate firewall. So the embed is only attempted where it
+     can actually work, and there is always a plain link as a way through. */
+  function scheduler(answers){
+    if(!CALENDLY_URL) return null;
     var url = CALENDLY_URL.trim().replace(/[?#].*$/, '').replace(/\/+$/, '');
-    if(!url) return '';
+    if(!url) return null;
 
     var q = [
       'embed_domain=' + encodeURIComponent(location.hostname || 'localhost'),
@@ -1947,7 +1971,16 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       if(answers.phone)  brief.push('Phone: ' + answers.phone);
       if(brief.length) q.push('a1=' + encodeURIComponent(brief.join(' | ')));
     }
-    return url + '?' + q.join('&');
+
+    /* the plain link carries the prefill but none of the embed plumbing */
+    var direct = q.filter(function(kv){
+      return !/^(embed_domain|embed_type|background_color|text_color|primary_color)=/.test(kv);
+    });
+    var out = { link: url + '?' + direct.join('&'), embed: '' };
+    if(location.protocol === 'http:' || location.protocol === 'https:'){
+      out.embed = url + '?' + q.join('&');
+    }
+    return out;
   }
 
   var CITIES = [
@@ -2516,18 +2549,30 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       w.classList.add('schedq');
       /* Step seven: the live Calendly grid. Pick a day, then a time.
          Everything already booked is simply absent from it. */
+      var sch = scheduler(answers);
       w.innerHTML = head +
         '<div class="calWrap"><div class="calLoad"><i></i><span>Loading available times…</span></div>' +
         '<iframe class="calFrame" title="Choose a day and time for your call" scrolling="no"></iframe></div>' +
+        '<a class="btn brass calBtn" target="_blank" rel="noopener">Open the calendar <span class="arw">→</span></a>' +
         '<p class="calNote">We\u2019ll send your confirmation with the meeting link ' +
         'and add it to your calendar.' +
         (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
-        '</p>';
+        '</p>' +
+        '<a class="calEsc" target="_blank" rel="noopener">Calendar not loading? Open it in a new tab ↗</a>';
       stage.innerHTML = ''; stage.appendChild(w);
 
-      var frame = $('.calFrame', w), load = $('.calLoad', w);
-      frame.addEventListener('load', function(){ load.classList.add('gone'); }, {once:true});
-      frame.src = calendlySrc(answers);
+      if(!sch) return;
+      $('.calBtn', w).href = sch.link;
+      $('.calEsc', w).href = sch.link;
+
+      if(sch.embed){
+        var frame = $('.calFrame', w), load = $('.calLoad', w);
+        frame.addEventListener('load', function(){ load.classList.add('gone'); }, {once:true});
+        frame.src = sch.embed;
+      } else {
+        /* nothing to embed here — give them the button instead of a blank box */
+        w.classList.add('noframe');
+      }
       return;
     }
 

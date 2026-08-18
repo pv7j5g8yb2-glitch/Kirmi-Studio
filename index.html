@@ -400,6 +400,9 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
   border-radius:50%;animation:calSpin .8s linear infinite}
 @keyframes calSpin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.calLoad i{animation-duration:2.4s}}
+.calTz{margin:0 0 8px;padding:7px 11px;border-left:2px solid var(--brass);
+  background:rgba(184,148,95,.10);font-size:12px;line-height:1.4;color:var(--ink-2)}
+.calTz b{font-weight:500;color:var(--ink)}
 .calNote{margin-top:10px;font-size:12.5px;line-height:1.45;color:var(--ink-3);max-width:56ch}
 /* A cross-origin calendar that refuses to render still fires load, so the page
    cannot tell. The calendar is always embedded; the quiet link below it is the
@@ -1973,11 +1976,11 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       if(answers.name)  q.push('name='  + encodeURIComponent(answers.name));
       if(answers.email) q.push('email=' + encodeURIComponent(answers.email));
 
-      /* Show the times in the clinic's own zone, not the browser's.
-         Left alone, Calendly reads the device and a New York clinic booking
-         from a laptop set to Dublin sees Dublin times with no clue that is
-         what happened. We already asked which city they are in two steps
-         back, so use that answer. */
+      /* Sent in case the scheduler ever reads it, but do not rely on it: the
+         booking page picks its zone from the device and offers its own
+         selector, and nothing from outside the frame reliably overrides that.
+         The step itself warns the visitor when the device and the clinic
+         disagree, which is what actually prevents a mis-set booking. */
       if(answers.timezone) q.push('timezone=' + encodeURIComponent(answers.timezone));
 
       /* Calendly shows these back to you on the booking, so the call is
@@ -2504,8 +2507,7 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       type:'opts', opts:['Calls we miss','Replies that go out too late','No-shows','Patients who never come back'] },
     { key:'city',   q:'Which city is your clinic in?', hint:'So we call at a sensible hour for you.', type:'city', ph:'Start typing your city' },
     { key:'you',    q:'And how do we reach you?', hint:'We’ll come back with times that fit your week.', type:'contact' },
-    { key:'slot',   q:'Pick your time.', hint:'Anything already taken won’t show.',
-      type:'sched' }
+    { key:'slot',   q:'Pick your time.', hint:'', type:'sched' }
   ];
 
   /* The calendar step only exists when there is a real calendar behind it.
@@ -2543,7 +2545,14 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     var s = STEPS[at];
     var w = document.createElement('div');
     w.className = 'qq on';
-    var head = '<h4>' + s.q + '</h4><p class="hint">' + s.hint + '</p>';
+    var hint = s.hint;
+    if(s.type === 'sched' && !hint){
+      var dz = ''; try { dz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){}
+      hint = (answers.timezone && dz === answers.timezone)
+        ? 'Shown in ' + tzLabel(answers.timezone) + ' — your clinic\u2019s time. Anything already taken won\u2019t show.'
+        : 'Anything already taken won\u2019t show.';
+    }
+    var head = '<h4>' + s.q + '</h4><p class="hint">' + hint + '</p>';
 
     if(s.type === 'opts'){
       w.innerHTML = head + '<div class="opts">' + s.opts.map(function(o){
@@ -2635,7 +2644,25 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       /* Step seven: the live Calendly grid. Pick a day, then a time.
          Everything already booked is simply absent from it. */
       var sch = scheduler(answers);
-      w.innerHTML = head +
+
+      /* The calendar decides which zone to display from the device it is
+         opened on, and nothing this page sends can override that from outside
+         the frame. Almost always the device and the clinic agree and the times
+         are already right. When they don't — travelling, a VPN, a manager
+         booking from another country — say so plainly and point at the zone
+         selector under the grid, rather than letting someone pick 2pm meaning
+         one thing and us reading it as another. */
+      var deviceTz = '';
+      try { deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){}
+      var clinicTz = answers.timezone || '';
+      var tzWarn = '';
+      if(clinicTz && deviceTz && deviceTz !== clinicTz){
+        tzWarn = '<p class="calTz"><b>Check the time zone.</b> This device is on ' +
+                 tzLabel(deviceTz) + ', not ' + tzLabel(clinicTz) +
+                 ' — switch it under the grid to ' + answers.city + '.</p>';
+      }
+
+      w.innerHTML = head + tzWarn +
         '<div class="calWrap"><div class="calLoad"><i></i><span>Loading available times…</span></div>' +
         '<iframe class="calFrame" title="Choose a day and time for your call" scrolling="no"></iframe></div>' +
         '<p class="calNote">We\u2019ll send your confirmation with the meeting link ' +

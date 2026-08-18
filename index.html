@@ -2480,12 +2480,21 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
    ['Funafuti','TV','Pacific/Funafuti'],['Port Vila','VU','Pacific/Efate']
   ];
 
-  function tzLabel(zone){
+  /* The short form is only useful where it is a real abbreviation — EDT, PDT,
+     CST. Outside North America it degrades to a bare offset ("GMT+5:30"),
+     which tells a clinic owner nothing, so those fall back to the spelled-out
+     name: India Standard Time, Central European Summer Time. */
+  function tzName(zone, style){
     try {
-      var p = new Intl.DateTimeFormat('en-US',{timeZone:zone, timeZoneName:'short'}).formatToParts(new Date());
+      var p = new Intl.DateTimeFormat('en-US',{timeZone:zone, timeZoneName:style}).formatToParts(new Date());
       for(var i=0;i<p.length;i++) if(p[i].type === 'timeZoneName') return p[i].value;
     } catch(e){}
-    return zone.split('/').pop().replace(/_/g,' ');
+    return '';
+  }
+  function tzLabel(zone){
+    var short = tzName(zone, 'short');
+    if(short && /^[A-Za-z]+$/.test(short)) return short;
+    return tzName(zone, 'long') || short || zone.split('/').pop().replace(/_/g,' ');
   }
   function localNow(zone){
     try { return new Intl.DateTimeFormat('en-US',{timeZone:zone, hour:'numeric', minute:'2-digit'}).format(new Date()); }

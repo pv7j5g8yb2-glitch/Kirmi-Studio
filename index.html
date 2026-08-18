@@ -336,6 +336,16 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
 .qin::placeholder{color:var(--ink-3)}
 .qin:focus{outline:none;border-color:var(--forest)}
 .qgrid{display:grid;gap:9px}
+/* country code + number. The select is sized to the widest thing it shows
+   while collapsed — a flag, a name and a dial code — and the number takes
+   the rest. On phones the code sits above so neither field gets squeezed. */
+.telRow{display:grid;grid-template-columns:minmax(0,21.5ch) minmax(0,1fr);gap:9px}
+.telCode{padding-right:26px;text-overflow:ellipsis;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238C8474' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+.telCode:focus{outline:none;border-color:var(--forest)}
+@media(max-width:420px){.telRow{grid-template-columns:1fr}}
 .qfoot{margin-top:auto;padding-top:22px}
 .qfoot .btn{width:100%}
 .qerr{font-size:13px;color:var(--clay);margin-top:11px;min-height:18px;line-height:1.4}
@@ -392,18 +402,15 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
 @media(prefers-reduced-motion:reduce){.calLoad i{animation-duration:2.4s}}
 .calNote{margin-top:10px;font-size:12.5px;line-height:1.45;color:var(--ink-3);max-width:56ch}
 /* A cross-origin calendar that refuses to render still fires load, so the page
-   cannot tell. The way out is always present: a quiet link under a working
-   embed, and the whole button in place of the frame when we already know an
-   embed is impossible. */
-.calBtn{display:none;width:100%}
+   cannot tell. The calendar is always embedded; the quiet link below it is the
+   only way out, and it stays hidden unless the frame is still blank after ten
+   seconds. */
 .calEsc{display:none;margin-top:10px;font-size:12.5px;color:var(--ink-3);
   text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:2px;
   transition:color .2s,border-color .2s}
 .calEsc:hover{color:var(--forest);border-bottom-color:var(--forest)}
 .qq.slow .calEsc{display:inline-block;animation:escIn .5s ease both}
 @keyframes escIn{from{opacity:0}to{opacity:1}}
-.qq.noframe .calWrap,.qq.noframe .calEsc{display:none}
-.qq.noframe .calBtn{display:inline-flex}
 .hide{display:none!important}
 
 /* ═══ STICKY CTA ════════════════════════════════ */
@@ -1946,7 +1953,6 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     if(!url) return null;
 
     var q = [
-      'embed_domain=' + encodeURIComponent(location.hostname || 'localhost'),
       'embed_type=Inline',
       'hide_gdpr_banner=1',
       'hide_landing_page_details=1',
@@ -1954,6 +1960,10 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       'text_color=1F1B16',
       'primary_color=B8945F'
     ];
+    /* Only a real http(s) page has a domain worth declaring. Sending a made-up
+       one is what made the embed refuse to render and pushed booking off-page;
+       omitting it lets the calendar load here too. */
+    if(location.hostname) q.unshift('embed_domain=' + encodeURIComponent(location.hostname));
     if(answers){
       if(answers.name)  q.push('name='  + encodeURIComponent(answers.name));
       if(answers.email) q.push('email=' + encodeURIComponent(answers.email));
@@ -1985,12 +1995,65 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     var direct = q.filter(function(kv){
       return !/^(embed_domain|embed_type|background_color|text_color|primary_color)=/.test(kv);
     });
-    var out = { link: url + '?' + direct.join('&'), embed: '' };
-    if(location.protocol === 'http:' || location.protocol === 'https:'){
-      out.embed = url + '?' + q.join('&');
-    }
-    return out;
+    /* The calendar is always embedded. Booking happens on this page, wherever
+       the page is being viewed from. */
+    return { link: url + '?' + direct.join('&'), embed: url + '?' + q.join('&') };
   }
+
+  /* Dial codes for the phone field. A clinic in Miami may well answer a UK
+     number, so the code is asked for rather than assumed from the city. */
+  var DIALS = [
+   ['US','United States','1'],['GB','United Kingdom','44'],['CA','Canada','1'],['AU','Australia','61'],
+   ['IE','Ireland','353'],['NZ','New Zealand','64'],['AE','United Arab Emirates','971'],
+   ['AF','Afghanistan','93'],['AL','Albania','355'],['DZ','Algeria','213'],['AD','Andorra','376'],
+   ['AO','Angola','244'],['AG','Antigua and Barbuda','1268'],['AR','Argentina','54'],['AM','Armenia','374'],
+   ['AT','Austria','43'],['AZ','Azerbaijan','994'],['BS','Bahamas','1242'],['BH','Bahrain','973'],
+   ['BD','Bangladesh','880'],['BB','Barbados','1246'],['BY','Belarus','375'],['BE','Belgium','32'],
+   ['BZ','Belize','501'],['BJ','Benin','229'],['BT','Bhutan','975'],['BO','Bolivia','591'],
+   ['BA','Bosnia and Herzegovina','387'],['BW','Botswana','267'],['BR','Brazil','55'],['BN','Brunei','673'],
+   ['BG','Bulgaria','359'],['BF','Burkina Faso','226'],['BI','Burundi','257'],['KH','Cambodia','855'],
+   ['CM','Cameroon','237'],['CV','Cape Verde','238'],['CF','Central African Republic','236'],
+   ['TD','Chad','235'],['CL','Chile','56'],['CN','China','86'],['CO','Colombia','57'],['KM','Comoros','269'],
+   ['CG','Congo','242'],['CD','Congo (DRC)','243'],['CR','Costa Rica','506'],['CI','Cote d Ivoire','225'],
+   ['HR','Croatia','385'],['CU','Cuba','53'],['CY','Cyprus','357'],['CZ','Czechia','420'],['DK','Denmark','45'],
+   ['DJ','Djibouti','253'],['DM','Dominica','1767'],['DO','Dominican Republic','1809'],['EC','Ecuador','593'],
+   ['EG','Egypt','20'],['SV','El Salvador','503'],['GQ','Equatorial Guinea','240'],['ER','Eritrea','291'],
+   ['EE','Estonia','372'],['SZ','Eswatini','268'],['ET','Ethiopia','251'],['FJ','Fiji','679'],
+   ['FI','Finland','358'],['FR','France','33'],['GA','Gabon','241'],['GM','Gambia','220'],
+   ['GE','Georgia','995'],['DE','Germany','49'],['GH','Ghana','233'],['GR','Greece','30'],
+   ['GD','Grenada','1473'],['GT','Guatemala','502'],['GN','Guinea','224'],['GW','Guinea-Bissau','245'],
+   ['GY','Guyana','592'],['HT','Haiti','509'],['HN','Honduras','504'],['HK','Hong Kong','852'],
+   ['HU','Hungary','36'],['IS','Iceland','354'],['IN','India','91'],['ID','Indonesia','62'],['IR','Iran','98'],
+   ['IQ','Iraq','964'],['IL','Israel','972'],['IT','Italy','39'],['JM','Jamaica','1876'],['JP','Japan','81'],
+   ['JO','Jordan','962'],['KZ','Kazakhstan','7'],['KE','Kenya','254'],['KI','Kiribati','686'],
+   ['KW','Kuwait','965'],['KG','Kyrgyzstan','996'],['LA','Laos','856'],['LV','Latvia','371'],
+   ['LB','Lebanon','961'],['LS','Lesotho','266'],['LR','Liberia','231'],['LY','Libya','218'],
+   ['LI','Liechtenstein','423'],['LT','Lithuania','370'],['LU','Luxembourg','352'],['MO','Macau','853'],
+   ['MG','Madagascar','261'],['MW','Malawi','265'],['MY','Malaysia','60'],['MV','Maldives','960'],
+   ['ML','Mali','223'],['MT','Malta','356'],['MH','Marshall Islands','692'],['MR','Mauritania','222'],
+   ['MU','Mauritius','230'],['MX','Mexico','52'],['FM','Micronesia','691'],['MD','Moldova','373'],
+   ['MC','Monaco','377'],['MN','Mongolia','976'],['ME','Montenegro','382'],['MA','Morocco','212'],
+   ['MZ','Mozambique','258'],['MM','Myanmar','95'],['NA','Namibia','264'],['NR','Nauru','674'],
+   ['NP','Nepal','977'],['NL','Netherlands','31'],['NI','Nicaragua','505'],['NE','Niger','227'],
+   ['NG','Nigeria','234'],['KP','North Korea','850'],['MK','North Macedonia','389'],['NO','Norway','47'],
+   ['OM','Oman','968'],['PK','Pakistan','92'],['PW','Palau','680'],['PS','Palestine','970'],
+   ['PA','Panama','507'],['PG','Papua New Guinea','675'],['PY','Paraguay','595'],['PE','Peru','51'],
+   ['PH','Philippines','63'],['PL','Poland','48'],['PT','Portugal','351'],['PR','Puerto Rico','1787'],
+   ['QA','Qatar','974'],['RO','Romania','40'],['RU','Russia','7'],['RW','Rwanda','250'],
+   ['KN','Saint Kitts and Nevis','1869'],['LC','Saint Lucia','1758'],['VC','Saint Vincent','1784'],
+   ['WS','Samoa','685'],['SM','San Marino','378'],['ST','Sao Tome and Principe','239'],
+   ['SA','Saudi Arabia','966'],['SN','Senegal','221'],['RS','Serbia','381'],['SC','Seychelles','248'],
+   ['SL','Sierra Leone','232'],['SG','Singapore','65'],['SK','Slovakia','421'],['SI','Slovenia','386'],
+   ['SB','Solomon Islands','677'],['SO','Somalia','252'],['ZA','South Africa','27'],['KR','South Korea','82'],
+   ['SS','South Sudan','211'],['ES','Spain','34'],['LK','Sri Lanka','94'],['SD','Sudan','249'],
+   ['SR','Suriname','597'],['SE','Sweden','46'],['CH','Switzerland','41'],['SY','Syria','963'],
+   ['TW','Taiwan','886'],['TJ','Tajikistan','992'],['TZ','Tanzania','255'],['TH','Thailand','66'],
+   ['TL','Timor-Leste','670'],['TG','Togo','228'],['TO','Tonga','676'],['TT','Trinidad and Tobago','1868'],
+   ['TN','Tunisia','216'],['TR','Turkiye','90'],['TM','Turkmenistan','993'],['TV','Tuvalu','688'],
+   ['UG','Uganda','256'],['UA','Ukraine','380'],['UY','Uruguay','598'],['UZ','Uzbekistan','998'],
+   ['VU','Vanuatu','678'],['VA','Vatican City','379'],['VE','Venezuela','58'],['VN','Vietnam','84'],
+   ['YE','Yemen','967'],['ZM','Zambia','260'],['ZW','Zimbabwe','263']
+  ];
 
   var CITIES = [
    ['Bridgeport','CT','America/New_York'],['New Haven','CT','America/New_York'],
@@ -2459,6 +2522,14 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
 
   function pad(n){ return (n<10 ? '0' : '') + n; }
 
+  /* ISO2 -> regional indicator pair, so the picker shows a flag without any
+     image files. Browsers without emoji flags just show the letters. */
+  function flagOf(iso){
+    return iso.replace(/./g, function(ch){
+      return String.fromCodePoint(0x1F1E6 + ch.charCodeAt(0) - 65);
+    });
+  }
+
   function draw(){
     count.textContent = pad(at+1) + ' / ' + pad(STEPS.length);
     bar.style.width = (at / STEPS.length * 100) + '%';
@@ -2562,7 +2633,6 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       w.innerHTML = head +
         '<div class="calWrap"><div class="calLoad"><i></i><span>Loading available times…</span></div>' +
         '<iframe class="calFrame" title="Choose a day and time for your call" scrolling="no"></iframe></div>' +
-        '<a class="btn brass calBtn" target="_blank" rel="noopener">Open the calendar <span class="arw">→</span></a>' +
         '<p class="calNote">We\u2019ll send your confirmation with the meeting link ' +
         'and add it to your calendar.' +
         (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
@@ -2571,23 +2641,18 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       stage.innerHTML = ''; stage.appendChild(w);
 
       if(!sch) return;
-      $('.calBtn', w).href = sch.link;
       $('.calEsc', w).href = sch.link;
 
-      if(sch.embed){
-        var frame = $('.calFrame', w), load = $('.calLoad', w);
-        frame.addEventListener('load', function(){ load.classList.add('gone'); }, {once:true});
-        frame.src = sch.embed;
-        /* Booking belongs on this page, so nobody is invited to leave it. The
-           new-tab link stays hidden and only appears after ten seconds, by
-           which point a calendar that was going to render has rendered — and
-           anyone still looking at an empty box (ad blocker, firewall) needs a
-           way through rather than a dead end. */
-        setTimeout(function(){ w.classList.add('slow'); }, 10000);
-      } else {
-        /* nothing to embed here — give them the button instead of a blank box */
-        w.classList.add('noframe');
-      }
+      var frame = $('.calFrame', w), load = $('.calLoad', w);
+      frame.addEventListener('load', function(){ load.classList.add('gone'); }, {once:true});
+      frame.src = sch.embed;
+
+      /* Booking belongs on this page, so nobody is invited to leave it. The
+         new-tab link stays hidden and only appears after ten seconds, by which
+         point a calendar that was going to render has — and anyone still
+         looking at an empty box (ad blocker, firewall) needs a way through
+         rather than a dead end. */
+      setTimeout(function(){ w.classList.add('slow'); }, 10000);
       return;
     }
 
@@ -2595,7 +2660,17 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     w.innerHTML = head + '<div class="qgrid">' +
       '<input class="qin" type="text"  id="qName"  placeholder="Your name" autocomplete="name" value="'  + (answers.name  || '') + '">' +
       '<input class="qin" type="email" id="qEmail" placeholder="Email" autocomplete="email" value="'     + (answers.email || '') + '">' +
-      '<input class="qin" type="tel"   id="qPhone" placeholder="Phone" autocomplete="tel" value="'       + (answers.phone || '') + '">' +
+      '<div class="telRow">' +
+        '<select class="qin telCode" id="qDial" aria-label="Country calling code">' +
+          DIALS.map(function(c){
+            return '<option value="' + c[0] + '" data-dial="' + c[2] + '"' +
+                   (c[0] === (answers.dialISO || 'US') ? ' selected' : '') + '>' +
+                   flagOf(c[0]) + '  ' + c[1] + '  +' + c[2] + '</option>';
+          }).join('') +
+        '</select>' +
+        '<input class="qin telNum" type="tel" id="qPhone" placeholder="Phone number" autocomplete="tel" value="' +
+          (answers.phoneLocal || '').replace(/"/g,'&quot;') + '">' +
+      '</div>' +
       '</div><p class="qerr"></p>' +
       '<div class="qfoot"><button class="btn" type="button" id="qSend">' +
       (hasCal ? 'Choose a time' : 'Request my discovery call') + ' <span class="arw">→</span></button></div>';
@@ -2664,11 +2739,22 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
 
   function send(w){
     var err = $('.qerr', w);
-    var name = $('#qName', w).value.trim(), email = $('#qEmail', w).value.trim(), phone = $('#qPhone', w).value.trim();
+    var name = $('#qName', w).value.trim(), email = $('#qEmail', w).value.trim();
+    var sel = $('#qDial', w), opt = sel.options[sel.selectedIndex];
+    var dial = opt.getAttribute('data-dial'), iso = sel.value;
+    var local = $('#qPhone', w).value.trim();
+    var digits = local.replace(/\D/g, '');
     if(!name){ err.textContent = 'Your name, please.'; return; }
     if(email.indexOf('@') < 1){ err.textContent = 'That email doesn’t look right.'; return; }
-    if(phone.length < 6){ err.textContent = 'A number we can actually reach you on.'; return; }
-    answers.name = name; answers.email = email; answers.phone = phone;
+    if(digits.length < 6){ err.textContent = 'A number we can actually reach you on.'; return; }
+    answers.name = name; answers.email = email;
+    /* Keep the pieces as well as the joined number, so the country is never in
+       doubt when the same digits could belong to two places. */
+    answers.dialISO   = iso;
+    answers.dialCode  = '+' + dial;
+    answers.phoneLocal = local;
+    answers.phone     = '+' + dial + ' ' + local;
+    answers.phoneE164 = '+' + dial + digits.replace(new RegExp('^' + dial), '');
 
     var btn = $('#qSend', w);
 

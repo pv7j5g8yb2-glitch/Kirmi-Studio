@@ -1920,11 +1920,23 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     if(answers){
       if(answers.name)  q.push('name='  + encodeURIComponent(answers.name));
       if(answers.email) q.push('email=' + encodeURIComponent(answers.email));
+
+      /* Show the times in the clinic's own zone, not the browser's.
+         Left alone, Calendly reads the device and a New York clinic booking
+         from a laptop set to Dublin sees Dublin times with no clue that is
+         what happened. We already asked which city they are in two steps
+         back, so use that answer. */
+      if(answers.timezone) q.push('timezone=' + encodeURIComponent(answers.timezone));
+
       /* Calendly shows these back to you on the booking, so the call is
-         already briefed before it starts. */
+         already briefed before it starts. The zone is in here too, so even
+         if the calendar ever displayed the wrong one, the booking itself
+         still records where they actually are. */
       var brief = [];
       if(answers.clinic) brief.push('Clinic: ' + answers.clinic);
       if(answers.city)   brief.push('City: ' + answers.city);
+      if(answers.timezone) brief.push('Their time zone: ' + answers.timezone +
+                                      ' (' + tzLabel(answers.timezone) + ')');
       if(answers.volume) brief.push('Inquiries/mo: ' + answers.volume);
       if(answers.source) brief.push('Mostly from: ' + answers.source);
       if(answers.pain)   brief.push('Biggest cost: ' + answers.pain);

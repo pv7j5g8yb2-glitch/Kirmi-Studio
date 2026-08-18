@@ -361,10 +361,17 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
   .dtick{animation:none}
   .dtick svg{animation:none;stroke-dashoffset:0}
 }
-/* step seven — the live Calendly grid */
-.calWrap{position:relative;flex:1;min-height:560px;margin-top:4px;
+/* step seven — the live booking grid.
+   The height used to be a flat 560px (640 on phones) no matter the screen,
+   which made the panel taller than the viewport on any short laptop or small
+   phone — you had to scroll a screen and a half to get past it. It now scales
+   with the viewport and stays capped, and the copy around it is tightened so
+   more of the panel is calendar and less is chrome. */
+.calWrap{position:relative;flex:1 1 auto;height:clamp(400px,54vh,520px);min-height:0;margin-top:2px;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--cream)}
-.calFrame{width:100%;height:100%;min-height:560px;border:0;display:block;background:var(--cream)}
+.calFrame{width:100%;height:100%;min-height:0;border:0;display:block;background:var(--cream)}
+.qq.schedq h4{font-size:clamp(20px,2.4vw,27px);margin-bottom:5px}
+.qq.schedq .hint{margin-bottom:12px}
 /* Calendly paints its own ground once it is up; until then this sits over the
    empty frame so the visitor sees progress rather than a blank rectangle */
 .calLoad{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -376,10 +383,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
   border-radius:50%;animation:calSpin .8s linear infinite}
 @keyframes calSpin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.calLoad i{animation-duration:2.4s}}
-.calNote{margin-top:14px;font-size:13px;line-height:1.5;color:var(--ink-3);max-width:52ch}
-@media(max-width:520px){
-  .calWrap,.calFrame{min-height:640px}
-}
+.calNote{margin-top:10px;font-size:12.5px;line-height:1.45;color:var(--ink-3);max-width:56ch}
 .hide{display:none!important}
 
 /* ═══ STICKY CTA ════════════════════════════════ */
@@ -2390,7 +2394,7 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       type:'opts', opts:['Calls we miss','Replies that go out too late','No-shows','Patients who never come back'] },
     { key:'city',   q:'Which city is your clinic in?', hint:'So we call at a sensible hour for you.', type:'city', ph:'Start typing your city' },
     { key:'you',    q:'And how do we reach you?', hint:'We’ll come back with times that fit your week.', type:'contact' },
-    { key:'slot',   q:'Pick your time.', hint:'Choose a day, then a time that suits you. Anything already taken won’t show.',
+    { key:'slot',   q:'Pick your time.', hint:'Anything already taken won’t show.',
       type:'sched' }
   ];
 
@@ -2509,13 +2513,14 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     }
 
     if(s.type === 'sched'){
+      w.classList.add('schedq');
       /* Step seven: the live Calendly grid. Pick a day, then a time.
          Everything already booked is simply absent from it. */
       w.innerHTML = head +
         '<div class="calWrap"><div class="calLoad"><i></i><span>Loading available times…</span></div>' +
         '<iframe class="calFrame" title="Choose a day and time for your call" scrolling="no"></iframe></div>' +
-        '<p class="calNote">Once you pick a slot, Calendly emails you the confirmation with the ' +
-        'call link and puts it in your calendar.' +
+        '<p class="calNote">We\u2019ll send your confirmation with the meeting link ' +
+        'and add it to your calendar.' +
         (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
         '</p>';
       stage.innerHTML = ''; stage.appendChild(w);
@@ -2556,8 +2561,8 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     $('#doneRecap').textContent = answers.clinic + ' · ' + answers.city + ' · ' + tzLabel(answers.timezone);
     if(booked){
       $('#doneTitle').textContent = 'You\u2019re booked';
-      $('#doneMsg').textContent   = 'Calendly has sent the confirmation to ' + answers.email +
-        ' with the call link, and it\u2019s in your calendar.' +
+      $('#doneMsg').textContent   = 'We\u2019ve sent your confirmation to ' + answers.email +
+        ' with the meeting link.' +
         (CALENDLY_REMINDERS ? ' You\u2019ll get a reminder ' + CALENDLY_REMINDERS + ' before we speak.' : '') +
         ' Talk soon.';
     }

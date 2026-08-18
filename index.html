@@ -73,12 +73,19 @@
   --col:1180px; --pad:clamp(20px,5vw,60px); --r:2px;
 }
 @media(min-width:1500px){ :root{ --col:1340px } }
+/* Large desktops and iMacs. Without these the column stops at 1340px and the
+   display type stops at its clamp ceiling, so the page keeps its laptop
+   proportions on a 27" screen and reads as thin and under-filled. The measure
+   and the type scale on together, so line lengths stay where they were. */
+@media(min-width:1800px){ :root{ --col:1500px } }
+@media(min-width:2200px){ :root{ --col:1620px } }
 
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{background:var(--ivory);color:var(--ink);font-family:var(--body);font-weight:300;
   font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased;overflow-x:hidden;position:relative}
 @media(min-width:1500px){ body{font-size:18px} }
+@media(min-width:2000px){ body{font-size:19px} }
 
 /* paper grain — keeps the flat grounds from reading as plain white */
 body::before{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.5;
@@ -104,8 +111,11 @@ section{position:relative}
 .d1,.d2,.d3,.d4{font-family:var(--display);font-weight:700;text-transform:uppercase;
   line-height:.92;letter-spacing:.004em;text-wrap:balance}
 .d1{font-size:clamp(46px,9.4vw,126px);line-height:.89}
+@media(min-width:1800px){ .d1{font-size:clamp(46px,8vw,158px)} }
 .d2{font-size:clamp(33px,5.8vw,76px)}
+@media(min-width:1800px){ .d2{font-size:clamp(33px,4.8vw,92px)} }
 .d3{font-size:clamp(25px,3.8vw,46px)}
+@media(min-width:1800px){ .d3{font-size:clamp(25px,3.1vw,56px)} }
 .d4{font-size:clamp(19px,2.4vw,27px);line-height:1}
 .lede{font-size:clamp(16.5px,1.9vw,21px);line-height:1.56;color:var(--ink-2);max-width:44ch;text-wrap:pretty}
 .g-forest .lede,.g-esp .lede{color:var(--don-2)}

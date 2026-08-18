@@ -400,9 +400,6 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
   border-radius:50%;animation:calSpin .8s linear infinite}
 @keyframes calSpin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.calLoad i{animation-duration:2.4s}}
-.calTz{margin:0 0 8px;padding:7px 11px;border-left:2px solid var(--brass);
-  background:rgba(184,148,95,.10);font-size:12px;line-height:1.4;color:var(--ink-2)}
-.calTz b{font-weight:500;color:var(--ink)}
 .calNote{margin-top:10px;font-size:12.5px;line-height:1.45;color:var(--ink-3);max-width:56ch}
 /* A cross-origin calendar that refuses to render still fires load, so the page
    cannot tell. The calendar is always embedded; the quiet link below it is the
@@ -1976,11 +1973,9 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
       if(answers.name)  q.push('name='  + encodeURIComponent(answers.name));
       if(answers.email) q.push('email=' + encodeURIComponent(answers.email));
 
-      /* Sent in case the scheduler ever reads it, but do not rely on it: the
-         booking page picks its zone from the device and offers its own
-         selector, and nothing from outside the frame reliably overrides that.
-         The step itself warns the visitor when the device and the clinic
-         disagree, which is what actually prevents a mis-set booking. */
+      /* Opens the grid in the clinic's own zone rather than the device's, so a
+         New York clinic booking from a laptop set to Dublin still sees New
+         York times and never has to pick a zone twice. */
       if(answers.timezone) q.push('timezone=' + encodeURIComponent(answers.timezone));
 
       /* Calendly shows these back to you on the booking, so the call is
@@ -2547,8 +2542,9 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
     w.className = 'qq on';
     var hint = s.hint;
     if(s.type === 'sched' && !hint){
-      var dz = ''; try { dz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){}
-      hint = (answers.timezone && dz === answers.timezone)
+      /* The calendar is opened in the clinic's own zone, so say which one —
+         no second time-zone decision to make. */
+      hint = answers.timezone
         ? 'Shown in ' + tzLabel(answers.timezone) + ' — your clinic\u2019s time. Anything already taken won\u2019t show.'
         : 'Anything already taken won\u2019t show.';
     }
@@ -2645,24 +2641,7 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
          Everything already booked is simply absent from it. */
       var sch = scheduler(answers);
 
-      /* The calendar decides which zone to display from the device it is
-         opened on, and nothing this page sends can override that from outside
-         the frame. Almost always the device and the clinic agree and the times
-         are already right. When they don't — travelling, a VPN, a manager
-         booking from another country — say so plainly and point at the zone
-         selector under the grid, rather than letting someone pick 2pm meaning
-         one thing and us reading it as another. */
-      var deviceTz = '';
-      try { deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){}
-      var clinicTz = answers.timezone || '';
-      var tzWarn = '';
-      if(clinicTz && deviceTz && deviceTz !== clinicTz){
-        tzWarn = '<p class="calTz"><b>Check the time zone.</b> This device is on ' +
-                 tzLabel(deviceTz) + ', not ' + tzLabel(clinicTz) +
-                 ' — switch it under the grid to ' + answers.city + '.</p>';
-      }
-
-      w.innerHTML = head + tzWarn +
+      w.innerHTML = head +
         '<div class="calWrap"><div class="calLoad"><i></i><span>Loading available times…</span></div>' +
         '<iframe class="calFrame" title="Choose a day and time for your call" scrolling="no"></iframe></div>' +
         '<p class="calNote">We\u2019ll send your confirmation with the meeting link ' +

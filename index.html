@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="en">
 <meta charset="utf-8">
 <title>KIRMI STUDIO — AGENCY</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -132,7 +134,11 @@ section{position:relative}
 .d4{font-size:clamp(19px,2.4vw,27px);line-height:1}
 .lede{font-size:clamp(16.5px,1.9vw,21px);line-height:1.56;color:var(--ink-2);max-width:44ch;text-wrap:pretty}
 .g-forest .lede,.g-esp .lede{color:var(--don-2)}
-.eyebrow{font-size:11px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-dp)}
+/* Block, not inline. Every eyebrow sits on its own line above a heading, and
+   as an inline box it shared its line with the parent's strut — so the line
+   grew to the body's 27.54px instead of the eyebrow's own 17.82px, padding
+   ~10px under every section label. Blockifying takes the strut out of it. */
+.eyebrow{display:block;font-size:11px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-dp)}
 .g-forest .eyebrow,.g-esp .eyebrow{color:var(--brass)}
 .tnum{font-variant-numeric:tabular-nums}
 p{text-wrap:pretty}
@@ -900,7 +906,6 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <span class="eyebrow">Proof</span>
         <h2 class="d2" style="margin-top:16px;max-width:13ch">Three clinics. Three different problems.</h2>
       </div>
-      <p></p>
     </div>
 
     <div class="taxo rv">
@@ -911,7 +916,7 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
   </div>
 
   <div id="pnav">
-    <div class="wrap pnav-in" role="tablist" aria-label="Case studies">
+    <div class="wrap pnav-in" role="group" aria-label="Case studies">
       <button type="button" data-goto="case1" aria-current="true"><span class="i">01</span><span class="nm">Maison</span></button>
       <button type="button" data-goto="case2"><span class="i">02</span><span class="nm">Levitate</span></button>
       <button type="button" data-goto="case3"><span class="i">03</span><span class="nm">Soho Skin Lab</span></button>
@@ -926,7 +931,6 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <h3>Maison of<br>Aesthetics</h3>
         <p class="loc">Chicago, Illinois</p>
         <p class="say">Same demand. <u>21 more consultations a month.</u></p>
-        <p class="why"></p>
       </div>
 
       <div>
@@ -1021,7 +1025,6 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <h3>Levitate<br>Med Spa</h3>
         <p class="loc">New York City · 3 locations</p>
         <p class="say">Three locations. <u>53 more consultations a month.</u></p>
-        <p class="why"></p>
       </div>
 
       <div>
@@ -1116,7 +1119,6 @@ footer{background:var(--espresso);color:var(--don-3);padding:clamp(44px,7vh,68px
         <h3>Soho<br>Skin Lab</h3>
         <p class="loc">Miami, Florida</p>
         <p class="say">4,800 patients had stopped coming. <u>Enough came back to bring in $125K.</u></p>
-        <p class="why"></p>
       </div>
 
       <div>
@@ -2706,8 +2708,8 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
 
     /* contact */
     w.innerHTML = head + '<div class="qgrid">' +
-      '<input class="qin" type="text"  id="qName"  placeholder="Your name" autocomplete="name" value="'  + (answers.name  || '') + '">' +
-      '<input class="qin" type="email" id="qEmail" placeholder="Email" autocomplete="email" value="'     + (answers.email || '') + '">' +
+      '<input class="qin" type="text"  id="qName"  placeholder="Your name" autocomplete="name" value="'  + (answers.name  || '').replace(/"/g,'&quot;') + '">' +
+      '<input class="qin" type="email" id="qEmail" placeholder="Email" autocomplete="email" value="'     + (answers.email || '').replace(/"/g,'&quot;') + '">' +
       '<div class="telRow">' +
         '<select class="qin telCode" id="qDial" aria-label="Country calling code">' +
           DIALS.map(function(c){
@@ -2863,3 +2865,5 @@ $('#fmail').href = 'mailto:' + CONTACT_EMAIL;
 
 })();
 </script>
+
+</html>

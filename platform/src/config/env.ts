@@ -43,7 +43,9 @@ const Schema = z.object({
   // ---- LLM ----
   LLM_PROVIDER: z.enum(["deterministic", "anthropic"]).default("deterministic"),
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
+  ANTHROPIC_MODEL: z.string().default("claude-opus-5"),
+  /** When the model is on, a reply it cannot ground in a tool result goes to a person instead. */
+  LLM_MAX_LATENCY_MS: z.coerce.number().int().positive().default(12_000),
 });
 
 export type Env = z.infer<typeof Schema>;

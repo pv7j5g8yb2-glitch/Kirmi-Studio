@@ -1,7 +1,9 @@
 import type { Queryable } from "../db/index.js";
 import { understand, type Extracted } from "./nlu.js";
 import { toolSearchVehicles, toolCheckAvailability, toolQuote, toolRentalRules, toolAvailableOn, money } from "./tools.js";
-import { getConversation, type Conversation } from "../domain/conversations.js";
+import { getConversation, listMessages, type Conversation } from "../domain/conversations.js";
+import type Anthropic from "@anthropic-ai/sdk";
+import { anthropicClient, runAgent, type AgentTurn } from "./llm/agent.js";
 import { createEnquiry, latestEnquiryForConversation, updateEnquiry } from "../domain/quotes.js";
 import { getRules } from "../domain/settings.js";
 import { rentalDays } from "../domain/availability.js";
@@ -95,6 +97,94 @@ function quoteText(
  * escalation rather than a guess.
  */
 export async function handleInbound(
+  ctx: Ctx,
+  text: string,
+  companyName: string,
+): Promise<EngineDecision> {
+  const deterministic = () => handleInboundDeterministic(ctx, text, companyName);
+
+  const client = anthropicClient();
+  if (!client) return deterministic();
+
+  try {
+    const decision = await handleInboundWithModel(ctx, text, companyName, client);
+    // A model that could not produce a grounded reply falls back to the engine that always can.
+    return decision ?? deterministic();
+  } catch (err) {
+    // A provider outage must never take the client's inbox down with it.
+    void err;
+    return deterministic();
+  }
+}
+
+/**
+ * Returns null when the model could not produce a reply it was allowed to send, which
+ * is the signal to fall back rather than to stay silent.
+ */
+async function handleInboundWithModel(
+  ctx: Ctx,
+  text: string,
+  companyName: string,
+  client: Anthropic,
+): Promise<EngineDecision | null> {
+  const understood = understand(text, ctx.now);
+
+  const fresh = await getConversation(ctx.db, ctx.tenantId, ctx.conversation.id);
+  if (fresh?.state === "human_active") {
+    return { reply: null, escalate: null, enquiryId: null, quoteId: null, understood, toolsUsed: [] };
+  }
+
+  let enquiry = await latestEnquiryForConversation(ctx.db, ctx.tenantId, ctx.conversation.id);
+  if (!enquiry) {
+    await createEnquiry(ctx.db, ctx.tenantId, {
+      conversationId: ctx.conversation.id,
+      customerId: ctx.conversation.customerId,
+      channel: ctx.conversation.channel,
+      vehicleHint: understood.vehicleHint,
+      startsAt: understood.startsAt,
+      endsAt: understood.endsAt,
+    });
+    enquiry = await latestEnquiryForConversation(ctx.db, ctx.tenantId, ctx.conversation.id);
+  }
+  const enquiryId = enquiry?.id ?? null;
+
+  const prior = await listMessages(ctx.db, ctx.tenantId, ctx.conversation.id, 30);
+  const history: AgentTurn[] = prior
+    .filter((m) => typeof m.body === "string" && m.body.trim().length > 0)
+    .map((m) => ({ role: m.direction === "inbound" ? ("customer" as const) : ("assistant" as const), text: m.body }));
+  // The message being handled may not be persisted yet; make sure the model sees it last.
+  if (history[history.length - 1]?.text !== text) history.push({ role: "customer", text });
+
+  const result = await runAgent(
+    client,
+    { db: ctx.db, tenantId: ctx.tenantId, now: ctx.now, enquiryId },
+    companyName,
+    history,
+  );
+
+  if (!result.reply) {
+    if (result.escalate) {
+      return {
+        reply: T[understood.locale].escalated,
+        escalate: result.escalate,
+        enquiryId, quoteId: null, understood,
+        toolsUsed: result.toolsUsed,
+      };
+    }
+    return null;
+  }
+
+  return {
+    reply: result.reply,
+    escalate: result.escalate,
+    enquiryId,
+    quoteId: null,
+    understood,
+    toolsUsed: result.toolsUsed,
+  };
+}
+
+async function handleInboundDeterministic(
   ctx: Ctx,
   text: string,
   companyName: string,

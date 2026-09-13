@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>DEIZ Rental</title>
+<style>
+:root{
+  --wa-header:#202c33; --wa-bg:#0b141a; --wa-in:#202c33; --wa-out:#005c4b;
+  --wa-text:#e9edef; --wa-dim:#8696a0; --wa-tick:#53bdeb; --wa-panel:#111b21;
+  --wa-input:#2a3942; --wa-green:#00a884; --wa-sys:#182229;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#0a0f13;font-family:var(--font);color:var(--wa-text);overflow:hidden}
+#app{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  max-width:460px;margin:0 auto;background:var(--wa-bg);
+  box-shadow:0 0 60px rgba(0,0,0,.7);
+}
+@media(min-width:520px){ #app{ border-left:1px solid #000;border-right:1px solid #000 } }
+
+/* header */
+.hdr{flex:none;background:var(--wa-header);display:flex;align-items:center;gap:10px;
+  padding:10px 8px 10px 6px;padding-top:calc(10px + env(safe-area-inset-top))}
+.back{width:26px;height:26px;flex:none;fill:var(--wa-text);opacity:.9}
+.av{width:40px;height:40px;border-radius:50%;flex:none;overflow:hidden;background:#000;
+  display:flex;align-items:center;justify-content:center}
+.who{flex:1;min-width:0;line-height:1.25;cursor:default}
+.who b{display:block;font-size:16px;font-weight:500;letter-spacing:.01em}
+.who span{display:block;font-size:12.5px;color:var(--wa-dim)}
+.who span.typing{color:var(--wa-green)}
+.hicon{width:22px;height:22px;flex:none;fill:var(--wa-text);opacity:.85;margin:0 7px;cursor:pointer}
+.hicon:hover{opacity:1}
+#reset:active{transform:rotate(-180deg)}
+#reset{transition:transform .35s ease}
+
+/* chat */
+.chat{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px 6px;
+  background-color:var(--wa-bg);background-repeat:repeat;background-size:340px}
+.row{display:flex;margin:1px 0;padding:0 4px}
+.row.out{justify-content:flex-end}
+.bub{position:relative;max-width:82%;padding:6px 9px 8px 9px;border-radius:8px;
+  font-size:14.6px;line-height:1.42;white-space:pre-wrap;word-wrap:break-word;
+  box-shadow:0 1px .5px rgba(11,20,26,.13);animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(4px) scale(.985)}to{opacity:1;transform:none}}
+.row.in .bub{background:var(--wa-in);border-top-left-radius:0}
+.row.out .bub{background:var(--wa-out);border-top-right-radius:0}
+.row.in.cont .bub{border-top-left-radius:8px}
+.row.out.cont .bub{border-top-right-radius:8px}
+.bub.rtl{direction:rtl;text-align:right}
+.bub.rtl .meta{float:left;margin:6px 8px -4px 0;direction:ltr}
+.meta{float:right;margin:6px 0 -4px 8px;font-size:10.5px;color:rgba(233,237,239,.55);
+  display:flex;align-items:center;gap:3px;white-space:nowrap}
+.tick{width:15px;height:11px;fill:var(--wa-dim)}
+.tick.read{fill:var(--wa-tick)}
+.tail{position:absolute;top:0;width:8px;height:13px}
+.row.in .tail{left:-8px;fill:var(--wa-in)}
+.row.out .tail{right:-8px;fill:var(--wa-out)}
+.row.cont .tail{display:none}
+
+/* system lines */
+.sys{display:flex;justify-content:center;margin:10px 0}
+.sys span{background:var(--wa-sys);color:#ffd279;font-size:11.5px;padding:5px 11px;border-radius:7px;
+  text-align:center;max-width:88%;line-height:1.5}
+.datepill span{background:var(--wa-sys);color:var(--wa-dim);text-transform:uppercase;letter-spacing:.03em;font-size:11.5px}
+
+/* car card */
+.card{width:250px;background:rgba(0,0,0,.22);border-radius:6px;overflow:hidden;margin:-2px -3px 4px;
+  white-space:normal;font-size:0}
+.card .art{height:118px;position:relative;background:linear-gradient(160deg,#2b3a42 0%,#162026 100%);
+  display:flex;align-items:center;justify-content:center;font-size:0}
+.card .art svg{width:190px;opacity:.92}
+.card .yr{position:absolute;top:7px;right:8px;font-size:10px;line-height:1.4;letter-spacing:.08em;color:#c6a268;
+  background:rgba(0,0,0,.45);padding:2px 6px;border-radius:3px}
+.card .body{padding:8px 10px 10px;font-size:14px}
+.card .nm{font-size:14px;font-weight:500;margin-bottom:3px;line-height:1.25}
+.card .sp{font-size:11.5px;color:rgba(233,237,239,.62);line-height:1.45}
+
+/* typing bubble */
+.dots{display:flex;gap:4px;padding:4px 2px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--wa-dim);animation:bl 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,60%,100%{opacity:.35;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+/* composer */
+.comp{flex:none;background:var(--wa-header);padding:7px 8px;
+  padding-bottom:calc(7px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:7px}
+.pill{flex:1;background:var(--wa-input);border-radius:21px;display:flex;align-items:center;padding:0 10px;min-height:42px}
+.pill svg{width:22px;height:22px;fill:var(--wa-dim);flex:none}
+.pill svg:first-child{margin-right:8px}
+.pill svg:last-child{margin-left:8px}
+#msg{flex:1;background:none;border:0;outline:0;color:var(--wa-text);font:inherit;font-size:15.5px;
+  padding:11px 0;resize:none;max-height:96px;line-height:1.35}
+#msg::placeholder{color:var(--wa-dim)}
+.send{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:var(--wa-green);
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.send svg{width:22px;height:22px;fill:#0b141a}
+.send:active{transform:scale(.93)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="hdr">
+    <svg class="back" viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20v-2z"/></svg>
+    <div class="av" id="av"></div>
+    <div class="who">
+      <b>DEIZ Rental</b>
+      <span id="sub">online</span>
+    </div>
+    <svg class="hicon" viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+    <svg class="hicon" viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+    <svg class="hicon" id="reset" viewBox="0 0 24 24" title="Reset conversation"><path d="M12 5V1L7 6l5 5V7c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"/></svg>
+  </div>
+
+  <div class="chat" id="chat"></div>
+
+  <div class="comp">
+    <div class="pill">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-3.5-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.3 0 4.3-1.4 5.1-3.5H6.9c.8 2.1 2.8 3.5 5.1 3.5z"/></svg>
+      <textarea id="msg" rows="1" placeholder="Message" autocomplete="off"></textarea>
+      <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg>
+    </div>
+    <button class="send" id="send" aria-label="Send">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   DEIZ knowledge base for the demo. Every answer a customer can get lives here
+   as data, which is exactly how the production platform holds a client's rules.
+   On a signed account this file is replaced by DEIZ's own fleet, rate card and
+   policies, and nothing in the engine changes.
+   =========================================================================== */
+
+const FLEET = [
+  { id:"g63", make:"Mercedes-Benz", model:"G63 AMG", year:2024, cat:"suv", seats:5, bags:3,
+    d:250000, w:1500000, m:5200000, dep:500000, km:250, minAge:25, minDays:2,
+    engine:"4.0L V8 biturbo", power:577, drive:"4MATIC all wheel drive", thirst:"heavy",
+    tags:["desert","status","fun","suv"], booked:[[10,13]],
+    blurb:"Big presence, proper off roader. The one people look at.",
+    blurbAr:"حضور قوي وقدرة حقيقية على الطرق الوعرة. السيارة التي يلتفت لها الجميع." },
+  { id:"urus", make:"Lamborghini", model:"Urus", year:2023, cat:"sports", seats:5, bags:3,
+    d:320000, w:1950000, m:6800000, dep:800000, km:200, minAge:25, minDays:2,
+    engine:"4.0L V8 biturbo", power:650, drive:"all wheel drive", thirst:"heavy",
+    tags:["fun","status","sports","fast"], booked:[[3,7]],
+    blurb:"Supercar speed with five seats and a boot.",
+    blurbAr:"سرعة سيارة خارقة مع خمسة مقاعد ومساحة للحقائب." },
+  { id:"vogue", make:"Range Rover", model:"Vogue", year:2024, cat:"suv", seats:5, bags:4,
+    d:150000, w:900000, m:3100000, dep:300000, km:250, minAge:25, minDays:1,
+    engine:"3.0L inline six", power:395, drive:"all wheel drive", thirst:"moderate",
+    tags:["family","business","comfort","suv","desert"], booked:[],
+    blurb:"The quiet all rounder. Most people end up here.",
+    blurbAr:"الخيار المتوازن والهادئ. أغلب العملاء يستقرون عليها." },
+  { id:"911", make:"Porsche", model:"911 Carrera", year:2023, cat:"sports", seats:2, bags:1,
+    d:220000, w:1320000, m:4600000, dep:500000, km:200, minAge:25, minDays:2,
+    engine:"3.0L flat six", power:385, drive:"rear wheel drive", thirst:"moderate",
+    tags:["fun","sports","fast"], booked:[[1,3]],
+    blurb:"A pure driving car. Two seats, small boot.",
+    blurbAr:"سيارة قيادة خالصة. مقعدان ومساحة صغيرة للحقائب." },
+  { id:"patrol", make:"Nissan", model:"Patrol Platinum", year:2024, cat:"suv", seats:7, bags:4,
+    d:75000, w:450000, m:1600000, dep:150000, km:250, minAge:22, minDays:1,
+    engine:"5.6L V8", power:400, drive:"four wheel drive", thirst:"moderate",
+    tags:["family","desert","value","suv"], booked:[],
+    blurb:"Seven seats, happy in sand, sensible money.",
+    blurbAr:"سبعة مقاعد، ممتازة على الرمال، وسعر معقول." },
+  { id:"lc", make:"Toyota", model:"Land Cruiser", year:2023, cat:"suv", seats:7, bags:4,
+    d:65000, w:390000, m:1350000, dep:150000, km:250, minAge:21, minDays:1,
+    engine:"3.5L V6 twin turbo", power:409, drive:"four wheel drive", thirst:"light",
+    tags:["family","desert","value","suv"], booked:[],
+    blurb:"The cheapest way to carry seven and still leave the road.",
+    blurbAr:"أرخص طريقة لنقل سبعة أشخاص مع القدرة على الطرق الوعرة." },
+  { id:"bentley", make:"Bentley", model:"Continental GT", year:2023, cat:"luxury", seats:4, bags:2,
+    d:240000, w:1440000, m:5000000, dep:600000, km:200, minAge:25, minDays:2,
+    engine:"4.0L V8", power:542, drive:"all wheel drive", thirst:"heavy",
+    tags:["wedding","status","comfort","luxury"], booked:[[20,23]],
+    blurb:"Wedding and dinner car. Quiet, heavy, expensive feeling.",
+    blurbAr:"سيارة أعراس ومناسبات. هادئة وفخمة الإحساس." },
+  { id:"s500", make:"Mercedes-Benz", model:"S500", year:2023, cat:"sedan", seats:5, bags:3,
+    d:130000, w:780000, m:2700000, dep:300000, km:250, minAge:25, minDays:1,
+    engine:"3.0L inline six", power:429, drive:"all wheel drive", thirst:"moderate",
+    tags:["business","comfort","chauffeur","sedan"], booked:[],
+    blurb:"Airport runs and meetings. The back seat is the point.",
+    blurbAr:"للمطار والاجتماعات. المقعد الخلفي هو الأهم فيها." }
+];
+
+const RULES = { vat:5, minAge:21, premiumAge:25, maxDrivers:2, weekly:7, monthly:28 };
+
+/* Every topic a rental customer actually raises. Weight 3 is enough on its own,
+   weight 1 and 2 have to combine. Arabic keys are matched as substrings because
+   word boundaries do not apply to Arabic script. */
+const TOPICS = [
+  { id:"documents",
+    kw:["documents:3","document:3","paperwork:3","passport:3","licence:3","license:3","permit:2","visa:2","emirates id:3","idp:3","international driving:3","what do i need:2","requirements:2","required:1",
+        "جواز:3","رخصة:3","أوراق:3","اوراق:3","وثائق:3","مستندات:3","المطلوب:2","الهوية:2"],
+    en:"Passport and driving licence. Visiting, so your home licence plus an international driving permit. Living here, Emirates ID and UAE licence. Minimum age is 21, and 25 for the performance cars. Up to 2 named drivers on the contract.",
+    ar:"جواز السفر ورخصة القيادة. إن كنت زائراً فرخصة بلدك مع رخصة القيادة الدولية، وإن كنت مقيماً فالهوية الإماراتية والرخصة الإماراتية. الحد الأدنى للعمر 21 سنة، و 25 للسيارات الرياضية. ويمكن إضافة سائقين اثنين على العقد." },
+
+  { id:"age",
+    kw:["how old:3","minimum age:3","min age:3","age limit:3","too young:3","under 25:3","over 21:2","21:1","25:1","young driver:3",
+        "العمر:3","السن:3","كم عمر:3"],
+    en:"21 and over on the Land Cruiser and Patrol, 25 and over on everything else, with a licence held at least a year. Under 25 there is no surcharge, the car list is just shorter.",
+    ar:"من 21 سنة على لاند كروزر وباترول، ومن 25 سنة على باقي السيارات، مع رخصة سارية منذ سنة على الأقل. وتحت 25 لا توجد رسوم إضافية، فقط قائمة السيارات أقصر." },
+
+  { id:"deposit",
+    kw:["deposit:3","security deposit:3","hold on my card:3","blocked on:2","how much do you hold:3","refundable:2",
+        "الوديعة:3","وديعة:3","مبلغ التأمين:3","التأمين المسترد:3"],
+    en:"The deposit is held on your card, not charged, and released when the car comes back. It runs from AED 1,500 on the Land Cruiser to AED 8,000 on the Urus depending on the car.",
+    ar:"مبلغ التأمين يُحجز على بطاقتك ولا يُخصم، ويُفك عند إرجاع السيارة. ويبدأ من 1,500 درهم على لاند كروزر ويصل إلى 8,000 درهم على الأوروس حسب السيارة." },
+
+  { id:"deposit_back",
+    kw:["deposit back:3","get my deposit:3","release the deposit:3","how long deposit:3","when do i get:2","refund the deposit:3",
+        "استرجاع التأمين:3","متى يرجع:2","فك التأمين:3"],
+    en:"The hold is released the day the car comes back, once fines have cleared the portal. Your bank usually shows it within 3 to 7 working days, which is their timing rather than ours.",
+    ar:"يُفك الحجز يوم إرجاع السيارة بعد التأكد من عدم وجود مخالفات. ويظهر عادة في حسابك خلال 3 إلى 7 أيام عمل، وهذه مدة البنك وليست مدتنا." },
+
+  { id:"insurance",
+    kw:["insurance:3","insured:3","excess:3","cover:2","coverage:3","comprehensive:3","third party:3",
+        "تأمين شامل:3","التأمين مشمول:3","التحمل:3","تغطية:3"],
+    en:"Comprehensive insurance is included. Excess is AED 1,500 on the standard cars and AED 5,000 on the performance ones. You can take the excess to zero for AED 100 a day.",
+    ar:"التأمين الشامل مشمول. التحمّل 1,500 درهم على السيارات العادية و 5,000 درهم على الرياضية. ويمكن إلغاء التحمّل بالكامل مقابل 100 درهم يومياً." },
+
+  { id:"accident",
+    kw:["accident:3","crash:3","if i damage:3","damage it:3","scratch:3","dent:3","bump:2","what if i hit:3",
+        "حادث:3","ضرر:3","خدش:3","صدم:3"],
+    en:"Call us first, then the police, and do not move the car until there is a report. Dubai Police issue it on the spot. With a report the insurance covers it and you pay only the excess. Without one, insurance will not pay, so never skip it.",
+    ar:"اتصل بنا أولاً ثم بالشرطة، ولا تحرك السيارة قبل صدور التقرير. شرطة دبي تصدره في الموقع. ومع التقرير يغطي التأمين الحادث وتدفع أنت مبلغ التحمّل فقط. أما بدونه فلن يدفع التأمين شيئاً، فلا تتجاوز هذه الخطوة أبداً." },
+
+  { id:"breakdown",
+    kw:["breakdown:3","break down:3","breaks down:3","broke down:3","broken down:3","roadside:3","tow:3","puncture:3","flat tyre:3","flat tire:3","battery:2","stuck:2","car stops:3","stops working:3","wont start:3","won t start:3","doesnt start:3","recovery:2","something goes wrong:3",
+        "تعطلت:3","عطل:3","بنشر:3","سحب السيارة:3"],
+    en:"24 hour recovery is included. One call and we come out, and if it is something we cannot fix at the roadside you get a replacement car the same day. You are never left with a dead car and a paid rental.",
+    ar:"خدمة المساعدة على الطريق متوفرة 24 ساعة وهي مشمولة. اتصال واحد ونصل إليك، وإن كان العطل لا يُصلح في الموقع نوفر لك سيارة بديلة في نفس اليوم. لن تبقى أبداً مع سيارة معطلة وإيجار مدفوع." },
+
+  { id:"mileage",
+    kw:["mileage:3","km:2","kilometre:3","kilometer:3","limit:2","extra km:3","unlimited:3","how many km:3",
+        "كيلومتر:3","المسافة:3","كم مسموح:3","حد المسافة:3"],
+    en:"250 km a day on most cars, 200 on the performance ones. Extra kilometres are AED 2.50 each. On weekly and monthly rentals the allowance is pooled, so one long drive is not a problem.",
+    ar:"250 كم يومياً على أغلب السيارات و 200 كم على الرياضية. والكيلومتر الإضافي 2.50 درهم. وفي الإيجار الأسبوعي والشهري تُجمّع المسافة، فلا مشكلة في رحلة طويلة." },
+
+  { id:"fuel",
+    kw:["fuel:3","petrol:3","gas:2","tank:3","refuel:3","full to full:3","fuel policy:3",
+        "بنزين:3","وقود:3","تعبئة:3","الخزان:3"],
+    en:"Full to full. You get it full and bring it back full. If it is short we refuel at cost plus AED 100.",
+    ar:"تستلمها ممتلئة وتعيدها ممتلئة. وإن نقص الوقود نقوم بالتعبئة بسعر التكلفة زائد 100 درهم." },
+
+  { id:"consumption",
+    kw:["fuel economy:3","fuel consumption:3","good on fuel:3","thirsty:3","mpg:3","how much petrol:3","economical:2",
+        "استهلاك الوقود:3","تشرب بنزين:3"],
+    en:"Realistically: the Land Cruiser is the easiest on fuel, the Patrol and the Range Rover sit in the middle, and the G63, Urus and Bentley are thirsty. Petrol in Dubai is cheap enough that it rarely changes which car people pick.",
+    ar:"عملياً: لاند كروزر هي الأقل استهلاكاً، وباترول ورينج روفر في المنتصف، أما G63 والأوروس والبنتلي فاستهلاكها عالٍ. وسعر البنزين في دبي منخفض بما يكفي لألا يغيّر اختيار أغلب العملاء." },
+
+  { id:"delivery",
+    kw:["deliver:3","delivery:3","drop off:3","bring it:3","collect:2","pick up:2","come to me:3","my place:3","my hotel:3","hotel:2","where do i collect:3",
+        "توصيل:3","تسليم:3","الفندق:2","توصلون:3"],
+    en:"We deliver and collect anywhere in Dubai free, any hour. Hotels, home, office, airport. Most customers never see our office.",
+    ar:"نوصل ونستلم في أي مكان في دبي مجاناً وفي أي وقت. الفنادق أو المنزل أو المكتب أو المطار. وأغلب العملاء لا يزورون مكتبنا إطلاقاً." },
+
+  { id:"other_emirates",
+    kw:["abu dhabi:3","sharjah:3","ajman:3","ras al khaimah:3","rak:2","fujairah:3","al ain:3","umm al quwain:3","another emirate:3","outside dubai:3",
+        "ابوظبي:3","أبوظبي:3","الشارقة:3","عجمان:3","راس الخيمة:3","الفجيرة:3","العين:3","خارج دبي:3"],
+    en:"Driving anywhere in the UAE is fine and costs nothing extra. Delivery or collection outside Dubai is AED 250 each way.",
+    ar:"القيادة في أي مكان داخل الإمارات مسموحة وبدون أي رسوم. أما التوصيل أو الاستلام خارج دبي فـ 250 درهم لكل اتجاه." },
+
+  { id:"airport",
+    kw:["airport:3","flight:3","terminal:3","lands:2","landing:3","arrive:2","arriving:2","dxb:3","late night:2","2am:2","3am:2","midnight:2",
+        "المطار:3","رحلتي:3","الوصول:2","منتصف الليل:2"],
+    en:"Airport delivery is free and we cover all terminals, any hour. Send the flight number nearer the time and we track it, so a delay does not leave you waiting. We meet you in arrivals with the keys.",
+    ar:"التوصيل إلى المطار مجاني ونغطي جميع الصالات وفي أي ساعة. أرسل رقم الرحلة قرب الموعد وسنتابعها، فلن يتركك التأخير منتظراً. ونستقبلك في صالة القدوم ومعنا المفاتيح." },
+
+  { id:"chauffeur",
+    kw:["chauffeur:3","with driver:3","a driver:3","someone to drive:3","driver for the day:3",
+        "سائق:3","بسائق:3","مع سائق:3"],
+    en:"A chauffeur is AED 600 for eight hours, available on any car. Most popular on the S500 and the Bentley.",
+    ar:"السائق بـ 600 درهم لثماني ساعات، ومتاح مع أي سيارة. وأكثر ما يُطلب مع الـ S500 والبنتلي." },
+
+  { id:"payment",
+    kw:["pay:2","payment:3","card:2","cash:3","bank transfer:3","transfer:2","invoice:2","receipt:2","how do i pay:3",
+        "الدفع:3","ادفع:3","كاش:3","تحويل:3"],
+    en:"Card, bank transfer, or cash at the office. The deposit has to go on a card. The invoice reaches you on WhatsApp the moment it is paid.",
+    ar:"بطاقة أو تحويل بنكي أو نقداً في المكتب. ومبلغ التأمين يجب أن يكون على بطاقة. وتصلك الفاتورة على واتساب فور الدفع." },
+
+  { id:"debit",
+    kw:["debit card:3","debit:3","credit card:3","do i need a credit:3","only debit:3",
+        "بطاقة خصم:3","بطاقة ائتمان:3"],
+    en:"The rental can go on a debit card, but the deposit has to sit on a credit card in the main driver's name. If you do not have one we can take the deposit in cash instead.",
+    ar:"يمكن دفع الإيجار ببطاقة خصم، لكن مبلغ التأمين يجب أن يكون على بطاقة ائتمان باسم السائق الرئيسي. وإن لم تكن لديك بطاقة ائتمان يمكننا أخذ التأمين نقداً." },
+
+  { id:"crypto",
+    kw:["crypto:3","bitcoin:3","usdt:3","btc:3","eth:2","stablecoin:3",
+        "عملات رقمية:3","بيتكوين:3"],
+    en:"Crypto is accepted for the rental, settled through our provider before the car goes out. The deposit still has to be a card hold or cash.",
+    ar:"نقبل العملات الرقمية لقيمة الإيجار، وتتم التسوية عبر مزود الخدمة قبل تسليم السيارة. أما التأمين فيبقى على البطاقة أو نقداً." },
+
+  { id:"company",
+    kw:["company booking:3","corporate booking:2","vat invoice:3","tax invoice:3","trn:3","company name:3","for my company:3","business invoice:3",
+        "فاتورة ضريبية:3","باسم الشركة:3","الرقم الضريبي:3"],
+    en:"We invoice companies with a full VAT invoice carrying your TRN, so it is reclaimable. Send the trade licence and the TRN and we set the account up once, then future bookings need nothing extra.",
+    ar:"نصدر للشركات فاتورة ضريبية كاملة تحمل رقمك الضريبي بحيث يمكن استرداد الضريبة. أرسل الرخصة التجارية والرقم الضريبي ونفتح الحساب مرة واحدة، وبعدها لا تحتاج الحجوزات القادمة إلى أي أوراق." },
+
+  { id:"cancel",
+    kw:["cancel:3","cancellation:3","change my booking:3","change the dates:3","reschedule:3","postpone:3","move the dates:3",
+        "الغاء:3","إلغاء:3","تغيير الحجز:3","تأجيل:3"],
+    en:"Free cancellation up to 24 hours before pickup. Inside 24 hours one day is charged. Moving the dates is free whenever the car is open.",
+    ar:"الإلغاء مجاني حتى 24 ساعة قبل الاستلام. وخلال 24 ساعة يُحتسب يوم واحد. أما تغيير التواريخ فمجاني طالما السيارة متاحة." },
+
+  { id:"extend",
+    kw:["extend:3","keep it longer:3","few more days:3","another day:2","extension:3","longer than planned:3",
+        "تمديد:3","ابقيها اكثر:3","ايام اضافية:3"],
+    en:"Message here and we extend it on the spot, no need to bring the car in. If the extension pushes you past 7 or 28 days the cheaper weekly or monthly rate applies to the whole rental, so extending often costs less per day than what you started on.",
+    ar:"راسلنا هنا ونمدد الحجز فوراً دون الحاجة لإحضار السيارة. وإذا تجاوز التمديد 7 أو 28 يوماً يُطبّق السعر الأسبوعي أو الشهري الأرخص على كامل المدة، فالتمديد غالباً يخفّض سعر اليوم عما بدأت به." },
+
+  { id:"early_return",
+    kw:["early return:3","bring it back early:3","return it early:3","finish early:3","give it back sooner:3",
+        "ارجاع مبكر:3","ارجعها قبل:3"],
+    en:"Bring it back early and we refund the unused full days, as long as the shorter period still clears the car's minimum. The rate is recalculated on the days you actually used.",
+    ar:"أعدها مبكراً ونعيد لك قيمة الأيام الكاملة غير المستخدمة، ما دامت المدة الأقصر تحقق الحد الأدنى للسيارة. ويُعاد احتساب السعر على الأيام التي استخدمتها فعلاً." },
+
+  { id:"late_return",
+    kw:["late return:3","return it late:3","bring it back late:3","grace period:3","an hour late:3","few hours late:3","overdue:2",
+        "تأخير الإرجاع:3","تأخرت:3","مهلة:3"],
+    en:"There is a two hour grace period. Past that a late return is charged as a full day. If you know you are running late, message here and we usually just extend it instead, which is cheaper.",
+    ar:"هناك مهلة ساعتين. وبعدها يُحتسب التأخير يوماً كاملاً. وإن علمت أنك ستتأخر فراسلنا هنا، وعادة نقوم بالتمديد بدلاً من ذلك وهو أرخص." },
+
+  { id:"salik",
+    kw:["salik:3","toll:3","tolls:3","gate charges:3",
+        "سالك:3","الرسوم:2"],
+    en:"Salik is billed at cost at the end, AED 4 a crossing, no markup.",
+    ar:"سالك يُحتسب بسعر التكلفة في النهاية، 4 دراهم لكل بوابة وبدون أي زيادة." },
+
+  { id:"fines",
+    kw:["fine:3","fines:3","ticket:3","speeding:3","radar:3","parking ticket:3","penalty:2",
+        "مخالفة:3","مخالفات:3","رادار:3"],
+    en:"Fines are passed on at cost plus AED 50 admin, and we send you the photo and the timestamp from the portal so you can see exactly what it was.",
+    ar:"المخالفات تُحوّل بسعرها زائد 50 درهم رسوم إدارية، ونرسل لك الصورة والوقت من الموقع الرسمي لترى بالضبط ما حدث." },
+
+  { id:"smoking",
+    kw:["smoke:3","smoking:3","cigarette:3","vape:3","shisha:3",
+        "تدخين:3","ادخن:3","سجائر:3"],
+    en:"No smoking in any of the cars. If one comes back smelling of smoke there is an AED 500 cleaning charge.",
+    ar:"التدخين ممنوع في جميع السيارات. وإذا عادت السيارة برائحة دخان تُحتسب رسوم تنظيف 500 درهم." },
+
+  { id:"pets",
+    kw:["pet:3","pets:3","dog:3","cat:3","animal:2",
+        "حيوان:3","كلب:3","قطة:3"],
+    en:"Pets are fine in the Land Cruiser and the Patrol if they travel in a carrier. Not in the leather interiors. Same AED 500 cleaning charge if there is hair left behind.",
+    ar:"الحيوانات الأليفة مسموحة في لاند كروزر وباترول إذا كانت داخل قفص مخصص. وغير مسموحة في السيارات ذات الفرش الجلدي. وتُطبّق رسوم تنظيف 500 درهم إذا بقي شعر في السيارة." },
+
+  { id:"child_seat",
+    kw:["child seat:3","baby seat:3","car seat:3","booster:3","infant seat:3","kids seat:3",
+        "كرسي اطفال:3","كراسي اطفال:3","كرسي أطفال:3","كراسي أطفال:3","مقعد اطفال:3"],
+    en:"Child seats are AED 50 a day each and we fit them before delivery. Tell me the ages and we bring the right stage.",
+    ar:"كراسي الأطفال بـ 50 درهم يومياً للكرسي، ونركّبها قبل التسليم. أخبرني بالأعمار ونحضر المقاس المناسب." },
+
+  { id:"second_driver",
+    kw:["second driver:3","additional driver:3","extra driver:3","another driver:3","two of us drive:3","both drive:3","my wife drive:3","my husband drive:3",
+        "سائق اضافي:3","سائق إضافي:3","نسوق اثنين:3"],
+    en:"Two named drivers on one contract at no extra cost. The second driver has to meet the same age and licence rules and we need their documents too.",
+    ar:"سائقان على عقد واحد بدون أي تكلفة إضافية. ويجب أن ينطبق على السائق الثاني نفس شروط العمر والرخصة، ونحتاج أوراقه أيضاً." },
+
+  { id:"cross_border",
+    kw:["oman:3","saudi:3","muscat:3","cross border:3","another country:3","out of the country:3","border:2",
+        "عمان:3","عُمان:3","السعودية:3","مسقط:3","خارج الدولة:3","الحدود:2"],
+    en:"Oman needs a cross border permit, AED 350, and three working days' notice so the insurance can be extended. Saudi is not permitted on any of our cars.",
+    ar:"عُمان تحتاج تصريح عبور حدود بقيمة 350 درهم وإشعار قبل ثلاثة أيام عمل حتى يتم تمديد التأمين. والسعودية غير مسموح بها على أي من سياراتنا." },
+
+  { id:"commercial",
+    kw:["uber:3","careem:3","taxi:3","delivery work:3","commercial use:3","talabat:3","deliveroo:3","ride hailing:3",
+        "اوبر:3","كريم:3","توصيل طلبات:3","استخدام تجاري:3"],
+    en:"Commercial use is not allowed. Ride hailing and delivery work void the insurance, so the car has to be for personal use only.",
+    ar:"الاستخدام التجاري غير مسموح. فالعمل على تطبيقات النقل أو التوصيل يُبطل التأمين، ويجب أن يكون استخدام السيارة شخصياً فقط." },
+
+  { id:"track",
+    kw:["track day:3","racetrack:3","race track:3","on track:3","the track:3","circuit:3","drift:3","drifting:3","racing:3","race it:3","dune bashing:3","off road driving:2",
+        "حلبة:3","سباق:3","تطعيس:3"],
+    en:"Track and competition use is not covered by the insurance, so the cars do not go on a circuit. Desert driving on the G63, Patrol and Land Cruiser is fine, on graded tracks rather than dune bashing.",
+    ar:"الاستخدام في الحلبات والسباقات غير مغطى بالتأمين، لذلك لا تدخل السيارات الحلبة. أما القيادة في الصحراء على G63 وباترول ولاند كروزر فمسموحة على الطرق الترابية المهيأة، وليس التطعيس." },
+
+  { id:"hours",
+    kw:["open:2","hours:2","what time:2","office:2","location:2","where are you:3","address:3","branch:2","closed:2","friday:1",
+        "الدوام:3","الموقع:3","وين مكانكم:3","العنوان:3","الفرع:2"],
+    en:"The office is open 8am to 10pm daily. This chat is answered around the clock, which is where most bookings happen. Since we deliver, most customers never come to the office at all.",
+    ar:"المكتب مفتوح يومياً من 8 صباحاً حتى 10 مساءً. وهذه المحادثة يُرد عليها على مدار الساعة ومن خلالها تتم أغلب الحجوزات. ولأننا نوصل السيارة فأغلب العملاء لا يحتاجون للحضور." },
+
+  { id:"long_term",
+    kw:["long term:3","monthly:3","per month:3","a month:2","lease:3","leasing:3","few months:3","six months:3",
+        "شهري:3","طويل الأمد:3","إيجار شهري:3","عقد طويل:3"],
+    en:"From 7 days the weekly rate applies and from 28 days the monthly rate, and you always get whichever is cheaper. A Land Cruiser for a month is AED 13,500 before VAT against AED 19,500 counted daily. Anything over three months we structure as a lease, and that is worth a call.",
+    ar:"من 7 أيام يُطبّق السعر الأسبوعي ومن 28 يوماً السعر الشهري، وتحصل دائماً على الأرخص. لاند كروزر لمدة شهر بـ 13,500 درهم قبل الضريبة مقابل 19,500 درهم بالحساب اليومي. وأي مدة تتجاوز ثلاثة أشهر نرتبها كعقد إيجار طويل ويستحق مكالمة." },
+
+  { id:"discount",
+    kw:["discount:3","cheaper rate:3","better price:3","best price:3","negotiate:3","deal:2","reduce the price:3","any offer:3",
+        "خصم:3","تخفيض:3","أفضل سعر:3","عرض:2"],
+    en:"The weekly and monthly rates are the discount and they apply on their own, no need to ask. The longer you take it the lower the day rate goes.",
+    ar:"السعر الأسبوعي والشهري هما الخصم ويُطبّقان تلقائياً دون الحاجة للطلب. وكلما طالت المدة انخفض سعر اليوم." },
+
+  { id:"photos",
+    kw:["photo:3","photos:3","picture:3","pictures:3","pics:3","image:2","video:3","see the car:3","show me the car:3","what does it look like:3",
+        "صور:3","صورة:3","فيديو:3","اشوف السيارة:3"],
+    en:"Sending them now. These are the actual cars, not stock shots, and I can send a walkaround video of any of them too.",
+    ar:"أرسلها لك الآن. وهذه صور السيارات الفعلية وليست صوراً عامة، ويمكنني أيضاً إرسال فيديو دوران حول أي سيارة منها." },
+
+  { id:"view_first",
+    kw:["test drive:3","see it first:3","view the car:3","come and see:3","before i book:3","inspect:3","try it:2",
+        "تجربة قيادة:3","اشوفها قبل:3","معاينة:3"],
+    en:"You can see it before you commit. We bring the car to you, you look it over, and you only sign once you are happy. No obligation if it is not what you expected.",
+    ar:"يمكنك رؤيتها قبل الالتزام. نحضر السيارة إليك وتعاينها ولا توقّع إلا إذا أعجبتك. ولا يوجد أي التزام إن لم تكن كما توقعت." },
+
+  { id:"same_day",
+    kw:["today:2","right now:3","immediately:3","asap:3","how fast:3","how soon:3","this evening:3","in an hour:3","same day:3","urgent:3",
+        "الان:3","الآن:3","حالاً:3","بسرعة:3","اليوم:2","مستعجل:3"],
+    en:"Same day is normal for us. If the car is free, delivery anywhere in Dubai is about 90 minutes from the documents being approved. Tell me which car and roughly where you are.",
+    ar:"التسليم في نفس اليوم أمر اعتيادي لدينا. وإذا كانت السيارة متاحة فالتوصيل في أي مكان في دبي خلال 90 دقيقة تقريباً من اعتماد الأوراق. أخبرني أي سيارة وأين أنت تقريباً." },
+
+  { id:"day_basis",
+    kw:["24 hours:3","24 hour basis:3","what time do i return:3","calendar day:3","counted:2","when does the day start:3","per day mean:3",
+        "24 ساعة:3","متى ارجعها:3","حساب اليوم:3"],
+    en:"A day is 24 hours from when you take the car, not a calendar day. Collect at 6pm, return by 6pm. It means an evening pickup does not cost you a day.",
+    ar:"اليوم يُحتسب 24 ساعة من وقت استلام السيارة وليس يوماً تقويمياً. تستلم في السادسة مساءً وتعيد في السادسة مساءً. وهذا يعني أن الاستلام مساءً لا يكلفك يوماً إضافياً." },
+
+  { id:"luggage",
+    kw:["luggage:3","bags:3","suitcase:3","suitcases:3","boot space:3","trunk:3","how much space:3","golf clubs:3",
+        "حقائب:3","شنط:3","مساحة:2"],
+    en:"Land Cruiser and Patrol take four large cases, the Range Rover four, the G63, Urus and S500 three, the Bentley two, and the 911 realistically one. Tell me how many of you are travelling and with what and I will tell you what fits.",
+    ar:"لاند كروزر وباترول تتسع لأربع حقائب كبيرة، ورينج روفر أربع، و G63 والأوروس و S500 ثلاث، والبنتلي حقيبتان، والبورش 911 حقيبة واحدة عملياً. أخبرني بعددكم وبما ستحملونه وسأخبرك بما يناسبكم." },
+
+  { id:"transmission",
+    kw:["automatic:3","manual:3","gearbox:3","transmission:3","stick shift:3",
+        "اوتوماتيك:3","أوتوماتيك:3","ناقل الحركة:3","عادي:1"],
+    en:"Every car in the fleet is automatic.",
+    ar:"جميع سيارات الأسطول أوتوماتيك." },
+
+  { id:"offroad",
+    kw:["4wd:3","4x4:3","off road:3","sand:3","desert driving:3","dunes:3","deflate:2","can it handle sand:3",
+        "دفع رباعي:3","الرمال:3","الصحراء:2","تطلع بر:3"],
+    en:"The Land Cruiser, Patrol and G63 are all genuine four wheel drive and go in the sand. Deflate to about 15 psi and we reinflate free on return. The Range Rover handles graded desert tracks but I would not take it into soft dunes.",
+    ar:"لاند كروزر وباترول و G63 دفع رباعي حقيقي وتدخل الرمال. خفّض ضغط الإطارات إلى نحو 15 رطلاً ونعيد النفخ مجاناً عند الإرجاع. ورينج روفر تتعامل مع الطرق الصحراوية المهيأة لكن لا أنصح بها في الرمال الناعمة." },
+
+  { id:"wedding_extras",
+    kw:["ribbon:3","decorate:3","decoration:3","flowers:3","wedding car:2","bridal:3","just married:3",
+        "زينة:3","ورود:3","تزيين:3"],
+    en:"We can have it decorated for the wedding, ribbon and flowers, AED 400 arranged through our florist. The Bentley is the one almost everyone takes for this.",
+    ar:"يمكننا تزيينها للعرس بالشرائط والورود مقابل 400 درهم عبر متجر الورود الذي نتعامل معه. والبنتلي هي التي يختارها أغلب العملاء لهذه المناسبة." },
+
+  { id:"shoot",
+    kw:["photoshoot:3","photo shoot:3","content:2","filming:3","shoot:2","instagram:2","influencer:3","brand shoot:3",
+        "تصوير:3","جلسة تصوير:3"],
+    en:"Static shoots with the car are fine on any booking. Commercial filming where the car appears in a paid advert needs to be agreed first, so tell me which it is and I will get it approved.",
+    ar:"التصوير الثابت مع السيارة مسموح مع أي حجز. أما التصوير التجاري الذي تظهر فيه السيارة ضمن إعلان مدفوع فيحتاج موافقة مسبقة، فأخبرني أي النوعين وسأحصل على الموافقة." },
+
+  { id:"peak",
+    kw:["new year:3","nye:3","eid:3","ramadan:3","peak season:3","christmas:3","holiday:2","busy season:3","december:2",
+        "رأس السنة:3","العيد:3","رمضان:3","موسم الذروة:3"],
+    en:"Rates are the same all year, no holiday surcharge. What does change is what is left, so the good cars go early around New Year and Eid. Book those weeks well ahead and you pay the normal rate.",
+    ar:"الأسعار ثابتة طوال العام ولا توجد رسوم مواسم. الذي يتغير هو المتاح، فالسيارات المميزة تُحجز مبكراً حول رأس السنة والعيد. احجز تلك الفترات مبكراً وستدفع السعر العادي." },
+
+  { id:"one_way",
+    kw:["one way:3","different location:3","return it somewhere else:3","drop it at the airport:3","leave it at:3",
+        "اتجاه واحد:3","ارجعها بمكان ثاني:3"],
+    en:"Return it anywhere in Dubai at no charge, including the airport. Outside Dubai it is AED 250.",
+    ar:"أعدها في أي مكان في دبي بدون رسوم بما في ذلك المطار. وخارج دبي 250 درهم." },
+
+  { id:"tourist",
+    kw:["tourist:3","visit visa:3","on holiday:3","visiting:2","not a resident:3","foreigner:2","just landed:2",
+        "سائح:3","تأشيرة زيارة:3","زائر:2"],
+    en:"Most of our customers are visitors. Passport, your home licence and an international driving permit is all you need. Licences from the GCC, UK, EU, US, Canada, Australia, Japan and a few others work without the permit.",
+    ar:"أغلب عملائنا زوار. كل ما تحتاجه جواز السفر ورخصة بلدك ورخصة القيادة الدولية. ورخص دول الخليج وبريطانيا والاتحاد الأوروبي وأمريكا وكندا وأستراليا واليابان وبعض الدول الأخرى تُقبل بدون الرخصة الدولية." },
+
+  { id:"swap",
+    kw:["swap:3","change the car:3","different car mid:3","exchange the car:3","try another:3",
+        "تبديل السيارة:3","اغير السيارة:3"],
+    en:"You can swap mid rental. We bring the new car, take the old one, and the difference in rate is settled either way. Common on monthly bookings.",
+    ar:"يمكنك تبديل السيارة أثناء الإيجار. نحضر السيارة الجديدة ونأخذ القديمة ويُسوّى فرق السعر في الاتجاهين. وهذا شائع في الحجوزات الشهرية." },
+
+  { id:"condition",
+    kw:["clean:3","dirty:2","condition:3","service:2","mileage on the clock:3","how old is the car:3","well maintained:3","new car:2",
+        "نظيفة:3","حالة السيارة:3","صيانة:3"],
+    en:"Every car goes out detailed and on a service schedule, and nothing in the fleet is older than 2023. You get photos of the car's condition at handover and at return, so there is never an argument about a mark that was already there.",
+    ar:"كل سيارة تخرج بعد تنظيف كامل وضمن جدول صيانة، ولا توجد في الأسطول سيارة أقدم من 2023. وتحصل على صور لحالة السيارة عند التسليم وعند الإرجاع، فلا يحدث أي خلاف حول علامة كانت موجودة أصلاً." },
+
+  { id:"fleet_size",
+    kw:["how many cars:3","fleet size:3","what is your fleet:3","how big:2","all your cars:3",
+        "كم سيارة:3","حجم الأسطول:3"],
+    en:"Eight cars, deliberately. It is a small fleet of good ones rather than a big fleet of tired ones, which is why they are all 2023 or newer.",
+    ar:"ثماني سيارات، وهذا مقصود. أسطول صغير من سيارات جيدة بدلاً من أسطول كبير من سيارات متعبة، ولهذا جميعها موديل 2023 أو أحدث." },
+
+  { id:"tech",
+    kw:["carplay:3","apple carplay:3","android auto:3","gps:3","navigation:3","sat nav:3","bluetooth:3","wifi:2","screen:2",
+        "كار بلاي:3","ملاحة:3","بلوتوث:3"],
+    en:"Apple CarPlay and Android Auto in every car, wireless in the 2024s. Navigation and Bluetooth throughout.",
+    ar:"أبل كاربلاي وأندرويد أوتو في كل سيارة، ولاسلكي في موديلات 2024. والملاحة والبلوتوث متوفرة في جميع السيارات." },
+
+  { id:"colour",
+    kw:["colour:3","color:3","white:2","black:2","matte:3","what colours:3","in red:2","in blue:2",
+        "لون:3","اللون:3","ابيض:2","اسود:2"],
+    en:"Colours are fixed per car since there is one of each. Tell me which car you are looking at and I will tell you the exact colour and send a photo.",
+    ar:"الألوان ثابتة لكل سيارة لأن لدينا نسخة واحدة من كل موديل. أخبرني بالسيارة التي تفكر بها وسأخبرك بلونها بالضبط وأرسل لك صورة." },
+
+  { id:"min_days",
+    kw:["minimum rental:3","minimum days:3","minimum period:3","one day only:3","just one day:3","rent for a day:3",
+        "الحد الأدنى:3","يوم واحد:2"],
+    en:"One day on the Land Cruiser, Patrol, Range Rover and S500. Two days on the G63, Urus, Porsche and Bentley.",
+    ar:"يوم واحد على لاند كروزر وباترول ورينج روفر و S500. ويومان على G63 والأوروس والبورش والبنتلي." },
+
+  { id:"objection",
+    kw:["expensive:3","too much:3","pricey:3","costly:3","cant afford:3","can t afford:3","out of my budget:3","over my budget:3",
+        "more than i wanted:3","found cheaper:3","cheaper elsewhere:3","cheaper somewhere:3","bit much:3","steep:3",
+        "negotiable:3","negotiate:3","do better on price:3","best you can do:3","lower the price:3","high price:2",
+        "غالي:3","غالية:3","مرتفع:3","تفاوض:3","قابلة للتفاوض:3","اقل سعر:3","أقل سعر:3","ارخص عندكم:3","كثير:2"],
+    en:"Fair. Two things bring it down without changing the car. At 7 days the weekly rate applies and at 28 the monthly does, and the day rate falls a long way. Otherwise tell me your number a day and I will show you exactly what sits under it.",
+    ar:"كلام منطقي. هناك أمران يخفضان السعر دون تغيير السيارة. عند 7 أيام يُطبّق السعر الأسبوعي وعند 28 يوماً السعر الشهري، وينخفض سعر اليوم بشكل واضح. أو أخبرني بالمبلغ الذي تريده في اليوم وسأعرض عليك ما يقع تحته بالضبط." },
+
+  { id:"trust",
+    kw:["legit:3","legitimate:3","reviews:3","google reviews:3","real company:3","scam:3","trust you:3","trusted:3",
+        "licensed:3","licence number:3","registered:3","how do i know:3","guarantee:2","safe to book:3","reliable:2",
+        "dont like the car:3","don t like the car:3","not what i expected:3","if i change my mind:3",
+        "موثوق:3","مرخصة:3","مرخص:3","نصب:3","تقييمات:3","مضمون:3","شركة حقيقية:3"],
+    en:"Fair question. We are a licensed Dubai rental company and I can send the trade licence and the RTA registration right now. You pay nothing until the car is in front of you, the contract is signed at the car rather than before, and if it is not what you expected you walk away and owe nothing.",
+    ar:"سؤال في محله. نحن شركة تأجير مرخصة في دبي، ويمكنني إرسال الرخصة التجارية وتسجيل هيئة الطرق والمواصلات الآن. ولا تدفع شيئاً حتى تكون السيارة أمامك، ويُوقّع العقد عند السيارة وليس قبلها، وإن لم تكن كما توقعت فلك أن تنصرف دون أي التزام." },
+
+  { id:"process",
+    kw:["how does it work:3","how it works:3","the process:3","what happens next:3","how do i book:3","how to book:3",
+        "what do i do:3","steps:3","procedure:3","book now pay later:3","come to the office:3","need to come:3",
+        "do i sign:3","contract:2","what happens after:3",
+        "الاجراءات:3","الإجراءات:3","كيف احجز:3","كيف تتم:3","الخطوات:3","وش اسوي:3","العقد:2"],
+    en:"Four steps. You tell me the car and the dates and I send the price. You say yes and I hold it. You send a photo of your passport and licence and one of the team checks them, usually inside the hour. We deliver it, you sign at the car and pay then. Nothing leaves your account before you have seen it.",
+    ar:"أربع خطوات. تخبرني بالسيارة والتواريخ فأرسل لك السعر. توافق فأحجزها لك. ترسل صورة من جواز السفر ورخصة القيادة ويراجعها أحد الزملاء عادة خلال ساعة. ثم نوصل السيارة إليك وتوقّع عندها وتدفع في تلك اللحظة. ولا يُخصم من حسابك شيء قبل أن تراها." },
+
+  { id:"collection",
+    kw:["when do i get it:3","when do i collect:3","when will it arrive:3","what time will it:3","how long until:3",
+        "delivery time:3","when can i have it:3","when can you bring:3","how soon can you:3",
+        "متى استلم:3","متى تصل:3","متى اخذها:3","وقت التسليم:3","متى توصلونها:3"],
+    en:"Whenever suits you. Once the documents are approved we can be with you in about 90 minutes anywhere in Dubai, or we book the exact day and time you want and turn up then.",
+    ar:"في الوقت الذي يناسبك. فور اعتماد الأوراق يمكننا الوصول إليك خلال 90 دقيقة تقريباً في أي مكان في دبي، أو نحدد اليوم والساعة التي تريدها بالضبط ونأتي في موعدها." },
+
+  { id:"tracking",
+    kw:["tracker:3","tracking device:3","gps tracking:3","are you tracking:3","monitored:3","speed limit:3",
+        "تتبع:3","جهاز تتبع:3","مراقبة:3"],
+    en:"Yes, every car has a tracker, standard across Dubai rentals and required by the insurer. It is used for recovery and for verifying fines, nothing else. There is no speed alert calling you.",
+    ar:"نعم، كل سيارة مزودة بجهاز تتبع، وهذا معيار في كل شركات التأجير في دبي وشرط من شركة التأمين. ويُستخدم لاسترجاع السيارة والتحقق من المخالفات فقط، ولا شيء غير ذلك. ولا توجد تنبيهات سرعة تتصل بك." }
+];
+
+/* ===========================================================================
+   The conversation engine. It reads the knowledge base above and nothing else,
+   so it can state a price, a rule or an availability only where one exists.
+   =========================================================================== */
+
+const AR_D = {"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9"};
+const norm = s => String(s).replace(/[٠-٩]/g, d => AR_D[d] || d);
+const isAr = s => /[؀-ۿ]/.test(s);
+const aed = m => {
+  const v = m / 100, hasFils = Math.round(m) % 100 !== 0;
+  return "AED " + v.toLocaleString("en-AE", {
+    minimumFractionDigits: hasFils ? 2 : 0, maximumFractionDigits: hasFils ? 2 : 0 });
+};
+const rate = v => aed(v.d);
+const DAY = 86400000;
+
+/* ---------- dates ---------- */
+
+const MONTHS = {jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,
+  jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11};
+const WD = {sunday:0,sun:0,monday:1,mon:1,tuesday:2,tue:2,tues:2,wednesday:3,wed:3,
+  thursday:4,thu:4,thurs:4,friday:5,fri:5,saturday:6,sat:6};
+const DURATION = /\b(\d{1,3}|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(days?|nights?|weeks?|months?)\b|(\d{1,3})\s*(يوم|يوما|ايام|أيام|اسبوع|أسبوع|اسابيع|أسابيع|شهر|شهور)/i;
+const WORDNUM = {a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+const AR_WORDNUM = {"واحد":1,"اثنين":2,"ثلاثة":3,"ثلاث":3,"اربعة":4,"أربعة":4,"اربع":4,"أربع":4,"خمسة":5,"خمس":5,"ستة":6,"ست":6,"سبعة":7,"سبع":7,"ثمانية":8,"ثماني":8,"تسعة":9,"تسع":9,"عشرة":10,"عشر":10};
+const AR_WORD_RE = /(واحد|اثنين|ثلاثة|ثلاث|اربعة|أربعة|اربع|أربع|خمسة|خمس|ستة|ست|سبعة|سبع|ثمانية|ثماني|تسعة|تسع|عشرة|عشر)\s*(ايام|أيام|يوم|اسابيع|أسابيع|اسبوع|أسبوع|شهور|اشهر|أشهر|شهر)/;
+
+function arDuration(t){
+  if(/يومين/.test(t)) return 2;
+  if(/اسبوعين|أسبوعين/.test(t)) return 14;
+  if(/شهرين/.test(t)) return 60;
+  const m = t.match(AR_WORD_RE);
+  if(m){
+    const n = AR_WORDNUM[m[1]] || 1, u = m[2];
+    if(/اسبوع|أسبوع|اسابيع|أسابيع/.test(u)) return n*7;
+    if(/شهر|شهور|اشهر|أشهر/.test(u)) return n*30;
+    return n;
+  }
+  if(/(^|\s)(اسبوع|أسبوع)(\s|$)/.test(t)) return 7;
+  if(/(^|\s)(شهر)(\s|$)/.test(t)) return 30;
+  return null;
+}
+function atNoon(d){ const c=new Date(d); c.setUTCHours(10,0,0,0); return c; }
+function nextWd(from,t){ const d=new Date(from); const k=(t-d.getUTCDay()+7)%7||7; d.setUTCDate(d.getUTCDate()+k); return atNoon(d); }
+
+function extractDates(text, now){
+  now = now || new Date();
+  const t = norm(text.toLowerCase());
+  let start = null;
+  if(/\btomorrow\b|غدا|غداً|بكرة/.test(t)){ const d=new Date(now); d.setUTCDate(d.getUTCDate()+1); start=atNoon(d); }
+  else if(/\btoday\b|\btonight\b|\bnow\b|اليوم|الان|الآن/.test(t)) start = atNoon(now);
+  else if(/weekend|نهاية الاسبوع|نهاية الأسبوع/.test(t)) start = nextWd(now,5);
+  if(!start){
+    const m = t.match(/\b(next\s+)?(sunday|sun|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thu|friday|fri|saturday|sat)\b/);
+    if(m && WD[m[2]] !== undefined) start = nextWd(now, WD[m[2]]);
+  }
+  if(!start){
+    const iso  = t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+    const dm   = t.match(/\b(\d{1,2})\s*[/.-]\s*(\d{1,2})(?:\s*[/.-]\s*(\d{2,4}))?\b/);
+    const dMon = t.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?([a-z]{3,9})\b/);
+    const monD = t.match(/\b([a-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?\b/);
+    const onNth = t.match(/\bon the (\d{1,2})(?:st|nd|rd|th)?\b/);
+    if(iso) start = atNoon(new Date(Date.UTC(+iso[1], +iso[2]-1, +iso[3])));
+    else if(dMon && MONTHS[dMon[2]] !== undefined){ const y=now.getUTCFullYear(); let d=new Date(Date.UTC(y,MONTHS[dMon[2]],+dMon[1])); if(d<now) d=new Date(Date.UTC(y+1,MONTHS[dMon[2]],+dMon[1])); start=atNoon(d); }
+    else if(monD && MONTHS[monD[1]] !== undefined){ const y=now.getUTCFullYear(); let d=new Date(Date.UTC(y,MONTHS[monD[1]],+monD[2])); if(d<now) d=new Date(Date.UTC(y+1,MONTHS[monD[1]],+monD[2])); start=atNoon(d); }
+    else if(dm){ const y = dm[3] ? (dm[3].length===2 ? 2000 + +dm[3] : +dm[3]) : now.getUTCFullYear();
+      let d = new Date(Date.UTC(y, +dm[2]-1, +dm[1])); if(!dm[3] && d<now) d = new Date(Date.UTC(y+1, +dm[2]-1, +dm[1])); start = atNoon(d); }
+    else if(onNth){ const day=+onNth[1]; let d=new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day)); if(d<now) d=new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth()+1, day)); start=atNoon(d); }
+  }
+  let days = null;
+  const dur = t.match(DURATION);
+  if(dur){
+    const raw = (dur[1] != null ? dur[1] : (dur[3] != null ? dur[3] : "1")).toLowerCase();
+    const n = /^\d+$/.test(raw) ? +raw : (WORDNUM[raw] || 1);
+    const unit = (dur[2] != null ? dur[2] : (dur[4] != null ? dur[4] : "day")).toLowerCase();
+    if(n > 0){
+      if(/week|اسبوع|أسبوع|اسابيع|أسابيع/.test(unit)) days = n*7;
+      else if(/month|شهر|شهور/.test(unit)) days = n*30;
+      else days = n;
+    }
+  }
+  if(!days) days = arDuration(t);
+  if(!days && /weekend|نهاية الاسبوع|نهاية الأسبوع/.test(t)) days = 2;
+  return { start, days };
+}
+
+const fmtDate = d => d.toLocaleDateString("en-GB", { day:"numeric", month:"long", timeZone:"UTC" });
+
+/* ---------- vehicles ---------- */
+
+const ALIASES = [
+  [/رنج\s*روفر|رينج\s*روفر|رنج/g, " range rover "], [/لاند\s*كروزر|لاندكروزر|لاند\s*كروز/g, " land cruiser "],
+  [/باترول|بترول|بطرول/g, " patrol "], [/أوروس|اوروس|لامبورغيني|لمبرغيني|لامبورجيني/g, " urus "],
+  [/بورشه|بورشة|بورش/g, " porsche "], [/بنتلي|بنتلى|كونتيننتال/g, " bentley "],
+  [/مرسيدس|مرسيديس/g, " mercedes "], [/تويوتا/g, " toyota "], [/نيسان/g, " nissan "],
+  [/جي\s*63|جي63/g, " g63 "], [/اس\s*500|إس\s*500/g, " s500 "],
+  [/دفع\s*رباعي|رباعية\s*الدفع|جيب/g, " suv "], [/رياضية|رياضي/g, " sports "],
+  [/فخمة|فاخرة|فخم/g, " luxury "], [/سيدان/g, " sedan "],
+  [/عائلية|عائلة|العائلة|اطفال|أطفال|عيال/g, " family "], [/صحراء|صحراوية|كثبان|رمال|طلعة\s*بر/g, " desert "],
+  [/عرس|زفاف|فرح|مناسبة/g, " wedding "], [/عمل|اجتماع|اجتماعات|شركة/g, " business "],
+  [/رخيصة|رخيص|اقتصادية|ارخص|أرخص|اقل سعر|أقل سعر/g, " cheap "], [/ممتعة|متعة|سريعة|استعراض/g, " fun "],
+  [/مريحة|راحة|هادئة/g, " comfort "]
+];
+const aliasify = t => { let s = " " + t + " "; for(const [re,to] of ALIASES) s = s.replace(re,to); return s; };
+
+const NAME_INDEX = FLEET.map(v => ({
+  v,
+  keys: [v.id, v.model.toLowerCase(), v.make.toLowerCase(), (v.make + " " + v.model).toLowerCase()]
+    .concat(v.model.toLowerCase().split(/\s+/)).concat(v.make.toLowerCase().split(/[\s-]+/))
+    .filter(k => k.length >= 3 || /\d/.test(k))
+}));
+const OTHER_CARS = ["ferrari","rolls","royce","phantom","cullinan","ghost","bmw","audi","mclaren","aston","martin",
+  "maserati","jaguar","tesla","kia","hyundai","honda","ford","mustang","corvette","camaro","chevrolet","jeep",
+  "wrangler","gmc","lexus","infiniti","cayenne","macan","panamera","taycan","huracan","aventador","revuelto",
+  "defender","discovery","velar","evoque","x5","x6","x7","m4","m5","a45","c63","e63","gle","gls","s63",
+  "maybach","rs6","rs7","q7","q8","r8","gt3","gtr","supra","civic","camry","fortuner","prado","yukon",
+  "tahoe","escalade","expedition","suburban","fiat","peugeot","renault","volkswagen","golf","skoda","mazda"];
+
+function matchVehicles(text){
+  const t = aliasify(norm(text).toLowerCase()).replace(/[^\p{L}\p{N}\s-]/gu," ").replace(/\s+/g," ");
+  const out = [];
+  for(const e of NAME_INDEX){
+    if(e.keys.some(k => new RegExp("(^|\\s)" + k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "(\\s|$)").test(t))) out.push(e.v);
+  }
+  return out;
+}
+function unknownCar(text){
+  const words = aliasify(norm(text).toLowerCase()).replace(/[^\p{L}\p{N}\s-]/gu," ").split(/\s+/);
+  const hit = OTHER_CARS.filter(c => words.includes(c));
+  return hit.length ? hit.join(" ") : null;
+}
+
+/* ---------- availability, against the booking calendar ---------- */
+
+const TODAY = (() => { const d = new Date(); d.setUTCHours(10,0,0,0); return d; })();
+function isFree(v, start, days){
+  if(!start) return true;
+  const a = Math.round((start - TODAY) / DAY);
+  const b = a + (days || 1);
+  return !(v.booked || []).some(([s,e]) => a < e && b > s);
+}
+function freeFrom(v){
+  const last = (v.booked || []).reduce((m,[,e]) => Math.max(m,e), 0);
+  return new Date(TODAY.getTime() + last * DAY);
+}
+
+/* ---------- needs ---------- */
+
+const CAT_LABEL = { suv:["SUVs","سيارات الدفع الرباعي"], sports:["sports cars","السيارات الرياضية"],
+  luxury:["luxury cars","السيارات الفاخرة"], sedan:["sedans","السيدان"] };
+const CAT_WORDS = [[/\b(suv|suvs|4x4|4wd|off ?roader)\b/,"suv"],[/\b(sports?|sportscar|supercar|coupe)\b/,"sports"],
+  [/\b(luxury|luxurious|exotic|vip|premium|posh)\b/,"luxury"],[/\b(sedan|saloon)\b/,"sedan"]];
+const PURPOSE_WORDS = [
+  [/\b(family|kids|children|wife|parents|seven seats?)\b/,"family"],
+  [/\b(desert|dune|dunes|off ?road|sand|camping|hatta|liwa|al ?qudra)\b/,"desert"],
+  [/\b(wedding|marriage|bride|groom|engagement|anniversary|birthday)\b/,"wedding"],
+  [/\b(business|meeting|meetings|corporate|executive|client|clients|conference)\b/,"business"],
+  [/\b(fun|enjoy|show off|impress|influencer|fast)\b/,"fun"],
+  [/\b(cheap|cheaper|cheapest|budget|affordable|economical|value|less expensive)\b/,"value"],
+  [/\b(comfort|comfortable|smooth|quiet|long drive|road trip)\b/,"comfort"]
+];
+const PURPOSE_LABEL = { family:["a family","للعائلة"], desert:["the desert","للصحراء"], wedding:["a wedding","للعرس"],
+  business:["business","للعمل"], fun:["something fun to drive","للمتعة"], value:["value","للسعر"], comfort:["comfort","للراحة"] };
+const BUDGET_RE = /\b(?:under|below|less than|max|maximum|around|about|budget(?:\s*(?:is|of))?|up\s?to|within)\s*(?:aed|dhs|dirhams?)?\s*(\d{3,6})\b|\b(?:aed|dhs|dirhams?)\s*(\d{3,6})\b|\b(\d{3,6})\s*(?:aed|dhs|dirhams?)\b|\b(\d{3,6})\s*(?:a day|per day|\/\s?day|daily)\b/i;
+const BUDGET_AR_RE = /(?:ميزانيتي|ميزانية|الميزانية|حدود|اقل من|أقل من|حوالي)\s*(\d{3,6})|(\d{3,6})\s*(?:درهم)|(\d{3,6})\s*(?:في اليوم|باليوم|يوميا|يومياً)/;
+const SEATS_RE = /\b(\d{1,2})\s*(?:people|persons?|pax|passengers?|of us|seats?|اشخاص|أشخاص|افراد|أفراد|ركاب|مقاعد)\b|\b(?:family|group|we are|there are|party)\s*(?:of)?\s*(\d{1,2})\b/i;
+const AGE_RE = /\b(?:i\s*am|i'?m|aged?|turning)\s*(\d{2})\b|\b(\d{2})\s*(?:years? old|yo)\b|عمري\s*(\d{2})/i;
+
+function readProfile(text){
+  const t = aliasify(norm(text).toLowerCase());
+  const p = { cat:null, purposes:[], budget:null, seats:null, age:null };
+  for(const [re,c] of CAT_WORDS) if(re.test(t)) p.cat = c;
+  for(const [re,g] of PURPOSE_WORDS) if(re.test(t) && !p.purposes.includes(g)) p.purposes.push(g);
+  const b = t.match(BUDGET_RE) || t.match(BUDGET_AR_RE);
+  if(b){ const n = +(b[1]||b[2]||b[3]||b[4]); if(n >= 300 && n <= 100000) p.budget = n * 100; }
+  const s = t.match(SEATS_RE);
+  if(s){ const n = +(s[1]||s[2]); if(n >= 1 && n <= 12) p.seats = n; }
+  const g = t.match(AGE_RE);
+  if(g){ const n = +(g[1]||g[2]||g[3]); if(n >= 16 && n <= 90) p.age = n; }
+  return p;
+}
+
+/* ---------- pricing ---------- */
+
+function priceIt(v, days){
+  const c = [{ tier:"daily", sub: v.d*days }];
+  if(v.m && days >= RULES.monthly){ const u = Math.floor(days/RULES.monthly); c.push({ tier:"monthly", sub: v.m*u + v.d*(days-u*RULES.monthly) }); }
+  if(v.w && days >= RULES.weekly){ const u = Math.floor(days/RULES.weekly); c.push({ tier:"weekly", sub: v.w*u + v.d*(days-u*RULES.weekly) }); }
+  const best = c.reduce((a,b) => b.sub < a.sub ? b : a);
+  const vat = Math.round(best.sub * RULES.vat / 100);
+  return { days, tier:best.tier, sub:best.sub, vat, total:best.sub+vat, dep:v.dep, km:v.km };
+}
+
+/* ---------- topic matching ---------- */
+
+function editDistance1(a, b){
+  if(Math.abs(a.length - b.length) > 1) return false;
+  // Two letters typed the wrong way round is one mistake, not two: "documnets".
+  if(a.length === b.length){
+    const diff = [];
+    for(let k = 0; k < a.length; k++) if(a[k] !== b[k]) diff.push(k);
+    if(diff.length === 2 && diff[1] === diff[0] + 1 &&
+       a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]]) return true;
+  }
+  let i = 0, j = 0, edits = 0;
+  while(i < a.length && j < b.length){
+    if(a[i] === b[j]){ i++; j++; continue; }
+    if(++edits > 1) return false;
+    if(a.length > b.length) i++;
+    else if(a.length < b.length) j++;
+    else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+function topicScore(t, topic, tokens){
+  let s = 0;
+  for(const entry of topic.kw){
+    const i = entry.lastIndexOf(":");
+    const word = entry.slice(0, i), w = +entry.slice(i+1) || 1;
+    if(/[؀-ۿ]/.test(word)){ if(t.includes(word)) s += w; }
+    else {
+      const esc = word.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      // "baby seat" has to match "baby seats", and "break down" has to match "breaks down".
+      const flex = esc.replace(/([a-z])(\s)/g, "$1s?$2") + (/s$/.test(word) ? "" : "s?");
+      const re = new RegExp("(^|[^a-z0-9])" + flex + "([^a-z0-9]|$)", "i");
+      if(re.test(t)) s += w;
+      // One typo in a long distinctive word still counts: "insurence", "documnets".
+      else if(w >= 3 && word.length >= 6 && !word.includes(" ") && tokens.some(tk => editDistance1(tk, word))) s += w;
+    }
+  }
+  return s;
+}
+function bestTopic(text){
+  const t = norm(text).toLowerCase();
+  const tokens = t.replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+  let best = null, score = 0;
+  for(const topic of TOPICS){
+    const s = topicScore(t, topic, tokens);
+    if(s > score){ score = s; best = topic; }
+  }
+  return score >= 3 ? { topic: best, score } : null;
+}
+
+/* ---------- state ---------- */
+
+const S = { v:null, start:null, days:null, cat:null, purposes:[], budget:null, seats:null, age:null,
+  quoted:null, held:null, shortlist:[], greeted:false, misses:0 };
+function resetSlots(){
+  Object.assign(S, { v:null, start:null, days:null, cat:null, purposes:[], budget:null, seats:null, age:null,
+    quoted:null, held:null, shortlist:[], greeted:false, misses:0 });
+}
+
+/* ---------- intents that are not topics ---------- */
+
+const RX = {
+  human:      /\b(human|real person|speak to (someone|a person|a human)|talk to (someone|a person)|call me|phone me|put me through)\b|موظف|شخص حقيقي|اتصل بي|احكي مع/i,
+  manager:    /\b(manager|supervisor|owner|the boss)\b|مدير|المالك/i,
+  complaint:  /\b(was dirty|wasn'?t clean|not clean|last time|my last (rental|booking)|bad experience|broke down on me|overcharged|you charged me|charged me twice|refund me|complain|complaint|terrible service|worst)\b|شكوى|اشتكي|تجربة سيئة|خصمتم مني|السيارة كانت/i,
+  custom:     /\b(corporate rate|special rate|custom deal|bulk|fleet deal|long term contract|partnership|account with you|wholesale)\b|عقد شركة|سعر خاص|اتفاقية/i,
+  legal:      /\b(lawyer|legal|court|sue|dispute the|insurance claim|police case)\b|محامي|قضية|شكوى قانونية|مطالبة تأمين/i,
+  frustrated: /\b(wtf|what the|makes no sense|no sense|not listening|useless|stupid|dumb|rubbish|so bad|this is bad|are you (even )?(listening|reading))\b|مش فاهم|ما فهمت|مو زين/i,
+  reject:     /\b(didn'?t ask|did not ask|not that one|not that|wrong car|not what i|something else|other options?|anything else)\b|ليس هذا|مو هذا|ما طلبت|شيء اخر/i,
+  switchTo:   /\b(i meant|no i want|rather|instead|actually)\b|قصدي|بل اريد/i,
+  unsure:     /\b(don'?t know|dont know|no idea|not sure|unsure|which one|what fits|fits me|suits me|suit me|recommend|recommendation|suggest|suggestion|advice|advise|help me (choose|pick|decide)|what do you (think|suggest|recommend)|best (for|one)|should i)\b|لا اعرف|لا أعرف|مش عارف|ما ادري|تنصح|المناسب|يناسبني|ايهما|أيهما/i,
+  compare:    /\b(compare|comparison|difference|differences|\bvs\b|versus|better)\b|مقارنة|الفرق|أفضل من/i,
+  browse:     /\b(what (cars|do you have|else)|which cars|list|fleet|show me|options|full range|catalogue|catalog|prices?|rates?|price list|how much|availability|what u got|what you got|what'?s good|whats good|something nice|gimme options|give me options|send me the list|send the list|your cars|whip|menu)\b|ايش عندكم|وش عندكم|المتوفر|القائمة|الأسطول|شنو عندكم/i,
+  available:  /\b(available|availability|free|is it free|in stock|do you have it|still have)\b|متاح|متوفر|متوفرة|فاضية/i,
+  confirm:    /^\s*(yes|yeah|yep|yup|ok|okay|sure|perfect|great|go ahead|book it|hold it|confirm|do it|please do|lets do it|let'?s do it|i'?ll take it|take it|that one|the first|deal)\b|نعم|ايوه|أيوه|تمام|احجز|اوك|موافق/i,
+  greet:      /^\s*(hi|hello|hey|yo|good\s*(morning|evening|afternoon)|salam|salaam|as-?salam)\b|مرحبا|السلام|اهلا|أهلا|هلا/i,
+  thanks:     /\b(thanks|thank you|thx|appreciate it|cheers|bye|goodbye|see you|perfect thanks)\b|شكرا|مشكور|يعطيك العافية|مع السلامة/i,
+  identity:   /\b(who are you|are you (a )?(bot|robot|human|real|ai|person)|is this (a )?(bot|human)|am i (talking|speaking) to)\b|انت روبوت|مين انت|من انت/i,
+  wantCar:    /\b(i need a car|need a car|want a car|looking for a car|need a vehicle|rent a car|hire a car|need to rent|want to rent|looking to rent|book a car|need wheels)\b|ابغى سيارة|اريد سيارة|ابي سيارة|احتاج سيارة|ابي احجز|ابغى احجز|اريد الحجز|بغيت سيارة/i,
+  second:     /\b(second car|another car|two cars|2 cars|a car for my (brother|friend|wife|colleague)|one more car)\b|سيارة ثانية|سيارتين/i
+};
+
+/* ---------- presentation ---------- */
+
+const line = (v, ar) => v.make + " " + v.model + ", " + rate(v) + (ar ? " في اليوم. " : "/day. ") + (ar ? v.blurbAr : v.blurb);
+const listOf = (vs, ar) => vs.map(v => "• " + line(v, ar)).join("\n");
+
+function recommend(){
+  const wants = S.purposes.filter(p => p !== "value");
+  const valueFirst = S.purposes.includes("value");
+  const inBudget = FLEET.filter(v =>
+    (!S.cat || v.cat === S.cat) && (!S.seats || v.seats >= S.seats) &&
+    (!S.budget || v.d <= S.budget) && (!S.age || v.minAge <= S.age) && isFree(v, S.start, S.days));
+  let list = inBudget, note = null, stretch = null;
+  if(wants.length){
+    const tagged = inBudget.filter(v => wants.some(w => v.tags.includes(w)));
+    if(tagged.length) list = tagged;
+    else if(inBudget.length){
+      list = inBudget; note = "noneInBracket";
+      stretch = FLEET.filter(v => wants.some(w => v.tags.includes(w)) && (!S.seats || v.seats >= S.seats))
+        .sort((a,b) => a.d - b.d)[0] || null;
+    }
+  }
+  if(!list.length){
+    const relaxed = FLEET.filter(v => (!S.cat || v.cat === S.cat) && (!S.seats || v.seats >= S.seats) && (!S.age || v.minAge <= S.age))
+      .filter(v => !wants.length || wants.some(w => v.tags.includes(w)));
+    list = relaxed.length ? relaxed : FLEET.slice(); note = "overBudget";
+  }
+  const score = v => {
+    let s = 0;
+    for(const w of wants) if(v.tags.includes(w)) s += 3;
+    if(S.cat && v.cat === S.cat) s += 2;
+    if(S.seats && v.seats >= S.seats) s += 1;
+    return s;
+  };
+  list = list.slice().sort((a,b) => valueFirst ? a.d - b.d : (score(b) - score(a) || a.d - b.d));
+  const blank = !S.cat && !S.purposes.length && !S.budget && !S.seats;
+  if(blank){ const byPrice = FLEET.slice().sort((a,b) => a.d - b.d); list = [byPrice[0], byPrice[3], byPrice[5], byPrice[7]]; }
+  return { list, note, stretch, blank, valueFirst };
+}
+
+function leadFor(r, ar){
+  const ps = S.purposes.filter(p => PURPOSE_LABEL[p] && p !== "value").map(p => PURPOSE_LABEL[p][ar?1:0]);
+  const forWhat = ps.length ? (ar ? " " + ps[0] : " for " + ps[0]) : "";
+  const cap = S.budget ? (ar ? " ضمن " + aed(S.budget) + " في اليوم" : " under " + aed(S.budget) + " a day") : "";
+  const seats = S.seats ? (ar ? " تتسع لـ " + S.seats : " seating " + S.seats) : "";
+  if(r.blank) return ar ? "هذه المجموعة، أربع من ثمانية:" : "Here is the spread, four of the eight:";
+  if(r.note === "noneInBracket") return ar ? "لا يوجد شيء" + forWhat + cap + ". ضمن ميزانيتك لدينا:" : "Nothing" + forWhat + cap + ". Inside that budget:";
+  if(r.note === "overBudget") return ar ? "لا شيء" + forWhat + cap + seats + ". الأقرب:" : "Nothing" + forWhat + cap + seats + ". Closest we have:";
+  if(r.valueFirst && !ps.length) return ar ? "من الأرخص إلى الأعلى:" : "Cheapest first:";
+  if(ps.length || S.budget || S.seats) return ar ? "الأنسب" + forWhat + cap + seats + ":" : "Best" + forWhat + cap + seats + ":";
+  if(S.cat) return ar ? "لدينا من " + CAT_LABEL[S.cat][1] + cap + ":" : "Our " + CAT_LABEL[S.cat][0] + cap + ":";
+  return ar ? "هذه الخيارات:" : "Here is what I would put in front of you:";
+}
+
+const ASK_EN = "What is it for, family, a desert trip, a wedding, business, or just something good to drive? And roughly what a day?";
+const ASK_AR = "ما الغرض منها، عائلة أم رحلة صحراوية أم عرس أم عمل أم سيارة ممتعة للقيادة؟ وكم ميزانيتك تقريباً في اليوم؟";
+
+/* ---------- the engine ---------- */
+
+function engineReply(text){
+  const ar = isAr(text);
+  const L = (en, a) => ar ? a : en;
+  const raw = String(text || "");
+  const t = norm(raw).toLowerCase();
+  const out = (msgs, escalated) => ({ messages: [].concat(msgs), escalated: !!escalated });
+  if(!t.trim()) return out({ text: L("That came through empty, what are you after?", "لم تصلني رسالة، ما الذي تبحث عنه؟") });
+
+  /* The four things that go to a person on purpose. Nothing else does. */
+  if(RX.complaint.test(t))
+    return out({ text: L("That should not have happened and it is not mine to answer. I am putting you to one of the team now with this whole conversation attached, so you will not have to repeat yourself.",
+                         "لا يجب أن يحدث هذا وليس من المفترض أن أرد عليه بنفسي. سأحوّلك إلى أحد الزملاء الآن مع هذه المحادثة كاملة، فلن تضطر لإعادة الشرح.") }, true);
+  if(RX.legal.test(t))
+    return out({ text: L("Anything involving a claim or a legal matter goes to the manager directly, not to me. Passing you over now.",
+                         "أي أمر يتعلق بمطالبة أو مسألة قانونية يُحوّل إلى المدير مباشرة وليس إليّ. أحوّلك الآن.") }, true);
+  if(RX.custom.test(t))
+    return out({ text: L("A company rate is set by the team, not by me. I am passing you over now. If you tell me roughly how many cars and for how long, I will send that across so they open with a number rather than questions.",
+                         "أسعار الشركات يحددها الفريق وليس أنا. أحوّلك الآن. وإذا أخبرتني تقريباً بعدد السيارات والمدة فسأرسل ذلك معك ليبدأوا معك برقم بدلاً من الأسئلة.") }, true);
+  if(RX.human.test(t) || RX.manager.test(t))
+    return out({ text: L("Of course. Passing you to one of the team now, they pick up on this same chat.",
+                         "بالتأكيد. أحوّلك إلى أحد الزملاء الآن، وسيكمل معك على نفس المحادثة.") }, true);
+
+  /* Read the message */
+  const found = extractDates(raw);
+  const prof = readProfile(raw);
+  const named = matchVehicles(raw);
+  if(found.start) S.start = found.start;
+  if(found.days)  S.days  = found.days;
+  if(prof.cat)    S.cat   = prof.cat;
+  if(prof.budget) S.budget = prof.budget;
+  if(prof.seats)  S.seats = prof.seats;
+  if(prof.age)    S.age   = prof.age;
+  for(const g of prof.purposes) if(!S.purposes.includes(g)) S.purposes.push(g);
+  if(S.seats && S.seats >= 6 && !S.purposes.includes("family")) S.purposes.push("family");
+
+  if(RX.switchTo.test(t) && named.length){ S.v = named[0]; S.quoted = null; S.shortlist = []; }
+  else if(RX.reject.test(t)){
+    const outv = named.slice(); if(S.v) outv.push(S.v);
+    S.v = null; S.quoted = null;
+    const alts = recommend().list.filter(v => !outv.some(o => o.id === v.id)).slice(0,3);
+    S.shortlist = alts;
+    return out({ text: L("My mistake. Then here are the ones worth looking at:\n" + listOf(alts,false) + "\nWhich of those, or tell me what it is for and your budget a day?",
+                         "خطأ مني. إليك الخيارات التي تستحق النظر:\n" + listOf(alts,true) + "\nأيها تفضل، أو قل لي الغرض وميزانيتك في اليوم؟") });
+  }
+
+  if(RX.frustrated.test(t)){
+    S.v = null; S.quoted = null;
+    return out({ text: L("Sorry, I got ahead of you. Simplest way through: tell me what the car is for and roughly the budget a day, and I will send you two that fit and nothing else.",
+                         "آسف، استعجلت عليك. أبسط طريقة: قل لي ما الغرض من السيارة وكم الميزانية تقريباً في اليوم، وسأرسل لك خيارين يناسبانك فقط.") });
+  }
+
+  if(RX.identity.test(t))
+    return out({ text: L("I am the DEIZ assistant. I can see the fleet, the rates and what is actually free, so I can price a car and hold it for you right now. Anything I should not decide alone goes to a person straight away.",
+                         "أنا مساعد ديز. أرى الأسطول والأسعار والمتاح فعلياً، ويمكنني تسعير السيارة وحجزها لك الآن. وأي أمر لا يجب أن أقرره وحدي أحوّله إلى موظف فوراً.") });
+
+  if(named.length === 1) { S.v = named[0]; S.shortlist = []; }
+
+  /* Knowledge base. A named car plus a duration is a price request, not a policy question. */
+  const wantsQuote = S.v && S.days;
+  const hit = bestTopic(raw);
+  if(hit && !wantsQuote){
+    S.misses = 0;
+    if(hit.topic.id === "objection"){
+      const cheap = FLEET.slice().sort((a,b) => a.d - b.d).slice(0,3);
+      S.shortlist = cheap;
+      return out({ text: L(hit.topic.en, hit.topic.ar) + "\n" +
+        L("The cheapest end of the fleet, for reference:", "وللمقارنة، أرخص ما في الأسطول:") + "\n" + listOf(cheap, ar) });
+    }
+    if(hit.topic.id === "photos"){
+      const v = S.v || S.shortlist[0];
+      if(!v) return out({ text: L("Which car, and I will send photos and a walkaround video of it.", "أي سيارة؟ وسأرسل لك صوراً وفيديو دوران حولها.") });
+      return out([{ text: L(hit.topic.en, hit.topic.ar) }, { card: v }]);
+    }
+    return out({ text: L(hit.topic.en, hit.topic.ar) });
+  }
+
+  /* A yes against a live quote becomes a hold */
+  if(RX.confirm.test(t) && S.quoted){
+    const q = S.quoted, ref = Math.random().toString(16).slice(2,8).toUpperCase();
+    S.quoted = null; S.held = q;
+    return out([
+      { text: L("Done. The " + q.label + " is held for you, reference " + ref + ".",
+                "تم. " + q.label + " محجوزة لك، رقم الحجز " + ref + ".") },
+      { text: L("Send me a photo of your passport and driving licence and one of the team checks them, usually within the hour. Where and what time do you want it delivered?",
+                "أرسل لي صورة من جواز السفر ورخصة القيادة ويراجعها أحد الزملاء، عادة خلال ساعة. وأين ومتى تريد التسليم؟") }
+    ]);
+  }
+
+  if(RX.second.test(t) && !S.v)
+    return out({ text: L("Two cars is no problem, they go on one booking and one deposit. Tell me which two and the dates and I will price them together.",
+                         "سيارتان ليست مشكلة، تُدرجان في حجز واحد وتأمين واحد. أخبرني بالسيارتين والتواريخ وسأسعّرهما معاً.") });
+
+  /* Straight after a hold, the next message is the answer to "where and when". */
+  if(S.held && !named.length && !found.days && !found.start &&
+     !RX.confirm.test(t) && !RX.greet.test(t) && !RX.thanks.test(t) && raw.trim().length > 2){
+    const where = raw.trim();
+    S.held = null;
+    return out({ text: L("Noted, " + where + ". You will get a confirmation here once the documents are approved, and the driver's number an hour before he sets off.",
+                         "تم التسجيل، " + where + ". وسيصلك التأكيد هنا فور اعتماد الأوراق، ورقم السائق قبل ساعة من انطلاقه.") });
+  }
+
+  /* Comparing */
+  if(named.length >= 2 || (named.length === 1 && RX.compare.test(t) && S.shortlist.length)){
+    const a = named[0], b = named[1] || S.shortlist.find(x => x.id !== a.id) || FLEET[0];
+    S.v = null; S.shortlist = [a,b];
+    const row = v => v.make + " " + v.model + ": " + rate(v) + L("/day"," في اليوم") + ", " + v.power + L(" bhp"," حصان") + ", " +
+      v.seats + L(" seats"," مقاعد") + ", " + L("deposit ","تأمين ") + aed(v.dep) + ". " + L(v.blurb, v.blurbAr);
+    const cheaper = a.d <= b.d ? a : b;
+    return out({ text: L(row(a) + "\n" + row(b) + "\nOn money alone the " + cheaper.make + " " + cheaper.model + " is the easier call. What are you using it for?",
+                         row(a) + "\n" + row(b) + "\nمن ناحية السعر فقط، " + cheaper.make + " " + cheaper.model + " هي الأسهل. ما الغرض من استخدامها؟") });
+  }
+
+  // "how much" is a browse on its own, but "how much for 4 days from tomorrow"
+  // against a shortlist is a price request, so dates outrank browsing.
+  const askedForHelp = (RX.unsure.test(t) || RX.browse.test(t) || RX.wantCar.test(t))
+    && !named.length && !(found.days || found.start);
+
+  /* Recommend */
+  if(!S.v && (askedForHelp || prof.cat || prof.purposes.length || prof.budget || prof.seats)){
+    S.misses = 0;
+    const r = recommend();
+    const top = r.list.slice(0, r.blank ? 4 : 3);
+    S.shortlist = top;
+    const knowsNeed = S.purposes.length || S.budget || S.seats;
+    let tail = knowsNeed
+      ? L("Want me to price one? Give me the dates and how many days.", "تحب أسعّر لك واحدة؟ أعطني التواريخ وعدد الأيام.")
+      : L(ASK_EN, ASK_AR);
+    if(r.stretch) tail = L("If you can stretch to " + rate(r.stretch) + " a day, the " + r.stretch.make + " " + r.stretch.model + " is the one you actually want. ",
+                           "وإذا أمكنك الوصول إلى " + rate(r.stretch) + " في اليوم فإن " + r.stretch.make + " " + r.stretch.model + " هي ما تبحث عنه فعلاً. ") + tail;
+    return out({ text: leadFor(r, ar) + "\n" + listOf(top, ar) + "\n" + tail });
+  }
+
+  /* A car we do not stock */
+  const other = !named.length && !S.v ? unknownCar(raw) : null;
+  if(other){
+    S.misses = 0;
+    const alts = recommend().list.slice(0,3);
+    S.shortlist = alts;
+    return out({ text: L("We do not keep the " + other + ". Closest in the fleet:\n" + listOf(alts,false) + "\nWould one of those do?",
+                         "لا نملك " + other + ". الأقرب لها في الأسطول:\n" + listOf(alts,true) + "\nهل تناسبك إحداها؟") });
+  }
+
+  /* Dates against a shortlist, or a bare yes, picks the top of the list */
+  if(!S.v && S.shortlist.length && (S.days || S.start || RX.confirm.test(t))) S.v = S.shortlist[0];
+
+  /* The car we have */
+  if(S.v){
+    S.misses = 0;
+    const v = S.v, label = v.make + " " + v.model;
+
+    if(S.age && S.age < v.minAge){
+      const ok = FLEET.filter(x => x.minAge <= S.age).sort((a,b) => b.d - a.d).slice(0,3);
+      S.v = null; S.shortlist = ok;
+      return out({ text: L("Not at " + S.age + ", I am afraid. The " + label + " needs a driver of " + v.minAge + " or over, and that is the insurer's line rather than ours. At " + S.age + " you can take:\n" + listOf(ok,false) + "\nWould one of those work?",
+                           "للأسف ليس في سن " + S.age + ". " + label + " تتطلب سائقاً بعمر " + v.minAge + " فأكثر، وهذا شرط شركة التأمين وليس شرطنا. وفي عمر " + S.age + " يمكنك أخذ:\n" + listOf(ok,true) + "\nهل تناسبك إحداها؟") });
+    }
+
+    if(S.start && !isFree(v, S.start, S.days || 1)){
+      const back = freeFrom(v);
+      const alts = FLEET.filter(x => x.id !== v.id && x.cat === v.cat && isFree(x, S.start, S.days || 1)).slice(0,2);
+      const altText = alts.length
+        ? L(" Free on those dates: " + alts.map(x => x.make + " " + x.model + " at " + rate(x) + "/day").join(", ") + ". Shall I price one?",
+            " والمتاح في تلك التواريخ: " + alts.map(x => x.make + " " + x.model + " بـ " + rate(x) + " في اليوم").join("، ") + ". هل أسعّر لك إحداها؟")
+        : L(" Shall I put you down for when it is back?", " هل أسجلك عند توفرها؟");
+      S.quoted = null;
+      return out({ text: L("The " + label + " is out on those dates, back on " + fmtDate(back) + "." + altText,
+                           label + " محجوزة في تلك التواريخ وتعود في " + fmtDate(back) + "." + altText) });
+    }
+
+    if(RX.available.test(t) && !S.days)
+      return out({ text: L("The " + label + " is free" + (S.start ? " on " + fmtDate(S.start) : " right now") + ". How many days do you need it?",
+                           label + " متاحة" + (S.start ? " في " + fmtDate(S.start) : " حالياً") + ". كم عدد الأيام التي تحتاجها؟") });
+
+    if(!S.days){
+      const when = S.start ? L(" I have you down for " + fmtDate(S.start) + ".", " سجّلت التاريخ " + fmtDate(S.start) + ".") : "";
+      return out([
+        { text: L("The " + label + " is with us. " + v.blurb + " " + rate(v) + " a day, " + v.power + " bhp, " + v.seats + " seats." + when + " How many days do you need it?",
+                  label + " متوفرة لدينا. " + v.blurbAr + " " + rate(v) + " في اليوم، " + v.power + " حصان، " + v.seats + " مقاعد." + when + " كم عدد الأيام؟") },
+        { card: v }
+      ]);
+    }
+
+    if(S.days < v.minDays)
+      return out({ text: L("The " + label + " goes out for " + v.minDays + " days minimum. Shall I price " + v.minDays + " days?",
+                           label + " حدها الأدنى " + v.minDays + " أيام. هل أسعّر لك " + v.minDays + " أيام؟") });
+
+    const p = priceIt(v, S.days);
+    S.quoted = { label, days: p.days, total: p.total };
+    const alt = S.shortlist.find(x => x.id !== v.id);
+    const tier = p.tier === "daily" ? "" :
+      L(" That is the " + p.tier + " rate, cheaper than counting the days.",
+        " وهذا هو السعر " + (p.tier === "weekly" ? "الأسبوعي" : "الشهري") + " وهو أرخص من الحساب اليومي.");
+    const other2 = alt ? L(" If you would rather the " + alt.make + " " + alt.model + ", that is " + rate(alt) + " a day.",
+                           " وإن كنت تفضل " + alt.make + " " + alt.model + " فسعرها " + rate(alt) + " في اليوم.") : "";
+    return out({ text: L(label + " for " + p.days + " day" + (p.days===1?"":"s") + ": " + aed(p.total) + " including VAT." + tier +
+                         " Deposit " + aed(p.dep) + ", held and returned. " + p.km + " km a day, delivery free anywhere in Dubai. Shall I hold it?" + other2,
+                         label + " لمدة " + p.days + " " + (p.days===1?"يوم":"أيام") + ": " + aed(p.total) + " شامل الضريبة." + tier +
+                         " التأمين " + aed(p.dep) + " يُحجز ويُعاد. و " + p.km + " كم يومياً، والتوصيل مجاني في أي مكان في دبي. هل أحجزها لك؟" + other2) });
+  }
+
+  /* Dates but no car */
+  if(S.days || S.start){
+    S.misses = 0;
+    const top = recommend().list.filter(v => isFree(v, S.start, S.days || 1)).slice(0,4);
+    S.shortlist = top;
+    return out({ text: L("Free" + (S.start ? " on " + fmtDate(S.start) : " for those dates") + ":\n" + listOf(top,false) + "\nWhich one, or tell me what it is for and I will pick for you.",
+                         "المتاح" + (S.start ? " في " + fmtDate(S.start) : " في تلك التواريخ") + ":\n" + listOf(top,true) + "\nأيها تفضل، أو قل لي الغرض وسأختار لك.") });
+  }
+
+  if(RX.greet.test(t)){
+    if(S.greeted) return out({ text: L("Still here. What do you need the car for?", "ما زلت معك. ما الغرض من السيارة؟") });
+    S.greeted = true;
+    return out({ text: L("Hello, thanks for messaging DEIZ Rental. We run SUVs, sports cars, a Bentley and an S500, from AED 650 a day up to AED 3,200, delivered anywhere in Dubai. " + ASK_EN,
+                         "أهلاً بك، شكراً لتواصلك مع ديز. لدينا سيارات دفع رباعي ورياضية وبنتلي و S500، من 650 درهم في اليوم حتى 3,200 درهم، مع التوصيل في أي مكان في دبي. " + ASK_AR) });
+  }
+
+  if(RX.thanks.test(t))
+    return out({ text: L("Any time. Message here whenever, day or night, it gets answered.",
+                         "في أي وقت. راسلنا هنا متى احتجت، ليلاً أو نهاراً، وسيصلك الرد.") });
+
+  /* Last resort. Ask, never guess, and never escalate for not understanding. */
+  S.misses++;
+  const sample = recommend().list.slice(0,3);
+  S.shortlist = sample;
+  if(S.misses === 1)
+    return out({ text: L("Say that another way for me? If it helps: tell me the car, the dates, or what you are using it for, and I will take it from there.",
+                         "ممكن تعيد صياغتها؟ وإن ساعدك: أخبرني بالسيارة أو التواريخ أو الغرض من الاستخدام وسأكمل من هناك.") });
+  return out({ text: L("Still not with you, so let me put something in front of you instead:\n" + listOf(sample,false) + "\nOr ask me about the deposit, insurance, delivery, documents, Salik, mileage or anything else, I have all of it.",
+                       "ما زلت لم أفهم، فدعني أعرض عليك شيئاً بدلاً من ذلك:\n" + listOf(sample,true) + "\nأو اسألني عن التأمين أو التوصيل أو الأوراق أو سالك أو المسافة أو أي شيء آخر، كل ذلك متوفر لدي.") });
+}
+
+
+/* ---------- chrome ---------- */
+const $ = s => document.querySelector(s);
+const chat = $("#chat"), sub = $("#sub");
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* WhatsApp doodle backdrop */
+chat.style.backgroundImage = "url(\"data:image/svg+xml;utf8," + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='340' height='340' viewBox='0 0 340 340'>
+   <g fill='none' stroke='%23ffffff' stroke-opacity='.035' stroke-width='1.6'>
+   <circle cx='40' cy='40' r='11'/><path d='M96 30h22v16H96z'/><path d='M150 26l9 16h-18z'/>
+   <path d='M196 24c6 0 10 4 10 10s-4 10-10 10-10-4-10-10'/><path d='M250 26h18v18h-18z' transform='rotate(15 259 35)'/>
+   <path d='M300 28l7 7-7 7-7-7z'/><path d='M22 96c8-8 18-8 26 0'/><circle cx='84' cy='104' r='9'/>
+   <path d='M128 96h20v14h-20z' transform='rotate(-12 138 103)'/><path d='M186 94l10 18h-20z'/>
+   <path d='M236 92c7 0 12 5 12 12'/><path d='M282 96h20v20h-20z' transform='rotate(24 292 106)'/>
+   <circle cx='34' cy='170' r='12'/><path d='M78 162l10 10-10 10-10-10z'/><path d='M120 164h22v18h-22z'/>
+   <path d='M176 160c9 0 16 7 16 16'/><path d='M220 162l9 18h-18z'/><path d='M264 164h18v18h-18z' transform='rotate(-18 273 173)'/>
+   <path d='M306 166c6 4 8 12 4 18'/><path d='M28 236h20v16H28z' transform='rotate(10 38 244)'/>
+   <circle cx='88' cy='244' r='10'/><path d='M130 236l10 18h-20z'/><path d='M178 232c9 0 16 7 16 16s-7 16-16 16'/>
+   <path d='M224 236h18v18h-18z'/><path d='M270 240l8 8-8 8-8-8z'/><path d='M308 234c7 5 9 15 4 22'/>
+   <path d='M36 300h22v14H36z' transform='rotate(-8 47 307)'/><circle cx='96' cy='306' r='9'/>
+   <path d='M140 298l9 16h-18z'/><path d='M186 296c8 0 14 6 14 14'/><path d='M232 298h18v18h-18z' transform='rotate(20 241 307)'/>
+   <path d='M282 300l7 7-7 7-7-7z'/></g></svg>`) + "\")";
+
+/* DEIZ avatar */
+$("#av").innerHTML =
+  `<svg viewBox='0 0 40 40' width='40' height='40'>
+     <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+       <stop offset='0' stop-color='#1a1a1a'/><stop offset='1' stop-color='#000'/></linearGradient></defs>
+     <circle cx='20' cy='20' r='20' fill='url(#g)'/>
+     <circle cx='20' cy='20' r='18.2' fill='none' stroke='#c6a268' stroke-width='1.1'/>
+     <text x='20' y='25.4' text-anchor='middle' font-family='Helvetica,Arial,sans-serif'
+       font-size='15.5' font-weight='700' letter-spacing='.5' fill='#c6a268'>D</text>
+   </svg>`;
+
+const TICK = `<svg class="tick read" viewBox="0 0 18 12"><path d="M17.4 1.3a.5.5 0 0 0-.7 0L9.3 8.7 8 7.4a.5.5 0 1 0-.7.7l1.7 1.7c.2.2.5.2.7 0l7.7-7.8a.5.5 0 0 0 0-.7zM11.9 1.3a.5.5 0 0 0-.7 0L3.8 8.7 1.4 6.3a.5.5 0 1 0-.7.7l2.8 2.8c.2.2.5.2.7 0l7.7-7.8a.5.5 0 0 0 0-.7z"/></svg>`;
+const TAIL_IN  = `<svg class="tail" viewBox="0 0 8 13"><path d="M8 0H0v13C0 6 3 1.5 8 0z"/></svg>`;
+const TAIL_OUT = `<svg class="tail" viewBox="0 0 8 13"><path d="M0 0h8v13C8 6 5 1.5 0 0z"/></svg>`;
+
+const clock = () => new Date().toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+let lastSide = null;
+
+function carArt(v){
+  const gold = "#c6a268";
+  const shape = v.cat === "sports"
+    ? "M8 44c2-9 9-13 14-14l14-11c4-3 9-4 14-4h18c7 0 13 3 18 8l14 11c6 1 12 4 14 10 1 4 1 7 0 10H8c-1-3-1-7 0-10z"
+    : v.cat === "sedan"
+    ? "M8 46c1-10 8-14 14-15l13-13c3-3 7-5 12-5h22c5 0 9 2 12 5l13 13c6 1 13 5 14 15 0 4 0 8-1 11H9c-1-3-1-7-1-11z"
+    : "M10 44c0-12 6-17 13-18l9-15c2-4 6-6 11-6h26c5 0 9 2 11 6l9 15c7 1 13 6 13 18v11H10V44z";
+  return `<svg viewBox="0 0 120 72">
+    <path d="${shape}" fill="none" stroke="${gold}" stroke-width="1.7" stroke-linejoin="round"/>
+    <path d="M30 30h60" stroke="${gold}" stroke-opacity=".45" stroke-width="1.2"/>
+    <circle cx="32" cy="55" r="9" fill="none" stroke="${gold}" stroke-width="1.7"/>
+    <circle cx="88" cy="55" r="9" fill="none" stroke="${gold}" stroke-width="1.7"/>
+    <circle cx="32" cy="55" r="3.4" fill="${gold}" fill-opacity=".5"/>
+    <circle cx="88" cy="55" r="3.4" fill="${gold}" fill-opacity=".5"/>
+  </svg>`;
+}
+
+function bubble(side, opts){
+  const cont = lastSide === side;
+  lastSide = side;
+  const row = document.createElement("div");
+  row.className = "row " + side + (cont ? " cont" : "");
+  const b = document.createElement("div");
+  b.className = "bub";
+  b.innerHTML = side === "in" ? TAIL_IN : TAIL_OUT;
+
+  if(opts.card){
+    const v = opts.card;
+    const c = document.createElement("div");
+    c.className = "card";
+    c.innerHTML = `<div class="art"><span class="yr">${v.year}</span>${carArt(v)}</div>
+      <div class="body"><div class="nm">${v.make} ${v.model}</div>
+      <div class="sp">${v.engine}, ${v.power} bhp<br>${v.seats} seats, ${v.bags} bags, ${v.drive}</div></div>`;
+    b.appendChild(c);
+  }
+  if(opts.text){
+    const span = document.createElement("span");
+    span.textContent = opts.text;
+    // Arabic reads right to left, and the timestamp has to follow it.
+    if(/[؀-ۿ]/.test(opts.text)){ span.dir = "rtl"; b.classList.add("rtl"); }
+    b.appendChild(span);
+  }
+  const m = document.createElement("div");
+  m.className = "meta";
+  m.innerHTML = clock() + (side === "out" ? TICK : "");
+  b.appendChild(m);
+  row.appendChild(b);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  return row;
+}
+
+function sysLine(text, cls){
+  const d = document.createElement("div");
+  d.className = "sys " + (cls || "");
+  const s = document.createElement("span");
+  s.textContent = text;
+  d.appendChild(s);
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  lastSide = null;
+}
+
+function typing(on){
+  sub.textContent = on ? "typing…" : "online";
+  sub.className = on ? "typing" : "";
+}
+
+/* ---------- conversation ---------- */
+
+let generation = 0;
+
+function openChat(){
+  generation++;
+  chat.innerHTML = "";
+  lastSide = null;
+  typing(false);
+  resetSlots();
+  sysLine("TODAY", "datepill");
+  sysLine("Messages are end-to-end encrypted. No one outside of this chat can read them.");
+}
+
+async function send(){
+  const box = $("#msg");
+  const text = box.value.trim();
+  if(!text) return;
+  const mine = generation;
+  box.value = "";
+  box.dir = "ltr";
+  box.style.height = "auto";
+  bubble("out", { text });
+
+  await sleep(320);
+  if(mine !== generation) return;
+  typing(true);
+  let res;
+  try { res = engineReply(text); }
+  catch(e){ res = { messages:[{ text:"One moment, passing you to the team." }], escalated:true }; }
+
+  for(let i = 0; i < res.messages.length; i++){
+    const m = res.messages[i];
+    const len = (m.text || "").length;
+    await sleep(Math.min(1500, 420 + len * 7));
+    if(mine !== generation) return;
+    if(i === 0) typing(false);
+    bubble("in", m);
+    if(i < res.messages.length - 1){ await sleep(220); typing(true); }
+  }
+  if(mine !== generation) return;
+  typing(false);
+  if(res.escalated) sysLine("Rashid from DEIZ has joined the chat");
+}
+
+$("#send").addEventListener("click", send);
+$("#msg").addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); send(); }
+});
+$("#msg").addEventListener("input", e => {
+  e.target.dir = /[؀-ۿ]/.test(e.target.value) ? "rtl" : "ltr";
+  e.target.style.height = "auto";
+  e.target.style.height = Math.min(96, e.target.scrollHeight) + "px";
+});
+$("#reset").addEventListener("click", openChat);
+
+openChat();
+$("#msg").focus();
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { env } from "./config/env.js";
 import { registerRoutes } from "./api/routes.js";
 import { registerWebhooks } from "./api/webhooks.js";
+import { registerDemoRoutes } from "./api/demo.js";
 import { getPool, closePool } from "./db/index.js";
 import { startScheduler } from "./jobs/scheduler.js";
 
@@ -60,6 +61,7 @@ export async function buildServer() {
 
   await registerWebhooks(app);
   await registerRoutes(app);
+  await registerDemoRoutes(app);
 
   /**
    * The console is three known files. Serving them from an explicit allow-list rather
@@ -71,6 +73,8 @@ export async function buildServer() {
     "/index.html": { file: "index.html", type: "text/html; charset=utf-8" },
     "/app.css": { file: "app.css", type: "text/css; charset=utf-8" },
     "/app.js": { file: "app.js", type: "text/javascript; charset=utf-8" },
+    "/demo": { file: "demo.html", type: "text/html; charset=utf-8" },
+    "/demo.html": { file: "demo.html", type: "text/html; charset=utf-8" },
   };
   const cache = new Map<string, Buffer>();
   for (const [route, meta] of Object.entries(ASSETS)) {

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kirmi Control Centre</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div id="login" class="gate">
+  <form id="loginForm" class="card">
+    <div class="lock">KIRMI <i>STUDIO</i></div>
+    <p class="muted">Control Centre</p>
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button type="submit" class="btn">Sign in</button>
+    <p id="loginError" class="err" hidden></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <div class="lock sm">KIRMI <i>STUDIO</i></div>
+    <select id="tenantPick" aria-label="Client"></select>
+    <nav class="tabs" id="tabs">
+      <button data-tab="inbox" class="on">Inbox</button>
+      <button data-tab="bookings">Bookings</button>
+      <button data-tab="fleet">Fleet</button>
+      <button data-tab="integrations">Integrations</button>
+      <button data-tab="report">Report</button>
+      <button data-tab="audit">Audit</button>
+    </nav>
+    <span class="grow"></span>
+    <span id="who" class="muted"></span>
+    <button id="logout" class="btn ghost">Sign out</button>
+  </header>
+
+  <div id="stats" class="strip"></div>
+
+  <main>
+    <section data-panel="inbox" class="panel">
+      <div class="split">
+        <div class="list" id="convList"></div>
+        <div class="thread" id="thread">
+          <p class="muted pad">Select a conversation.</p>
+        </div>
+      </div>
+    </section>
+    <section data-panel="bookings" class="panel" hidden><div id="bookings"></div></section>
+    <section data-panel="fleet" class="panel" hidden><div id="fleet"></div></section>
+    <section data-panel="integrations" class="panel" hidden><div id="integrations"></div></section>
+    <section data-panel="report" class="panel" hidden><div id="report"></div></section>
+    <section data-panel="audit" class="panel" hidden><div id="audit"></div></section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

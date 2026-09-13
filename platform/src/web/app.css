@@ -1,0 +1,86 @@
+:root{
+  --void:#0B0C0E; --bg:#0F1113; --panel:#15181B; --panel2:#1B1F23;
+  --ink:#ECE8E1; --ink2:#9AA1A8; --ink3:#6B7279;
+  --sand:#C6A268; --sand-dim:#7E6539; --hair:#242A2F;
+  --ok:#4ECB8E; --warn:#E0B35C; --stop:#E0796A; --info:#7FA6D4;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+/* a class-level display rule outranks the UA's [hidden] rule, so state it explicitly */
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+.grow{flex:1}
+.muted{color:var(--ink2)}
+.pad{padding:18px}
+.err{color:var(--stop);font-size:13px;margin-top:10px}
+.lock{font-weight:800;letter-spacing:.26em;font-size:15px}
+.lock i{font-style:normal;color:var(--sand)}
+.lock.sm{font-size:12px;letter-spacing:.2em}
+.gate{min-height:100vh;display:grid;place-items:center;padding:20px}
+.card{background:var(--panel);border:1px solid var(--hair);padding:28px;width:min(360px,100%);display:flex;flex-direction:column;gap:8px}
+.card p.muted{margin-bottom:14px;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
+label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);margin-top:8px}
+input,select,textarea{background:var(--void);border:1px solid var(--hair);color:var(--ink);padding:9px 11px;font:inherit;width:100%}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
+.btn{background:var(--sand);color:#0B0C0E;border:0;padding:9px 16px;font-weight:600;cursor:pointer;margin-top:14px}
+.btn:hover{background:#D8B77F}
+.btn.ghost{background:transparent;color:var(--ink2);border:1px solid var(--hair);margin:0}
+.btn.ghost:hover{color:var(--ink);border-color:var(--sand-dim)}
+.btn.sm{padding:5px 10px;font-size:12px;margin:0}
+.top{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--void);border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.top select{width:auto;min-width:150px;padding:5px 8px;font-size:13px}
+.tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tabs button{background:transparent;border:0;color:var(--ink2);padding:6px 11px;cursor:pointer;font:inherit;font-size:13px;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--sand)}
+.strip{display:flex;gap:1px;background:var(--hair);border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.stat{background:var(--void);padding:10px 16px;flex:1;min-width:120px}
+.stat b{display:block;font-family:var(--mono);font-size:19px;color:var(--sand)}
+.stat span{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+main{padding:16px}
+.split{display:grid;grid-template-columns:minmax(240px,320px) 1fr;gap:16px;align-items:start}
+@media(max-width:800px){.split{grid-template-columns:1fr}}
+.list{border:1px solid var(--hair);background:var(--panel);max-height:70vh;overflow:auto}
+.row{padding:11px 13px;border-bottom:1px solid var(--hair);cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.row:hover{background:var(--panel2)}
+.row.on{background:var(--panel2);border-left:2px solid var(--sand)}
+.row .who{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.row .nm{font-weight:600}
+.row .pv{color:var(--ink2);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thread{border:1px solid var(--hair);background:var(--panel);display:flex;flex-direction:column;min-height:50vh;max-height:70vh}
+.thead{padding:11px 14px;border-bottom:1px solid var(--hair);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:9px}
+.msg{max-width:78%;padding:8px 11px;border-radius:3px;white-space:pre-wrap;word-break:break-word}
+.msg.in{background:var(--panel2);align-self:flex-start}
+.msg.out{background:#17332A;align-self:flex-end}
+.msg .meta{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:4px}
+.composer{border-top:1px solid var(--hair);padding:10px;display:flex;gap:8px}
+.composer textarea{resize:vertical;min-height:38px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--hair);vertical-align:top}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);background:var(--panel2)}
+tbody tr:hover{background:var(--panel2)}
+.wrapbox{border:1px solid var(--hair);background:var(--panel);overflow-x:auto}
+.chip{font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:2px 7px;border-radius:2px;white-space:nowrap;display:inline-block}
+.c-CONNECTED{background:rgba(78,203,142,.14);color:var(--ok)}
+.c-NOT_CONNECTED{background:rgba(224,121,106,.13);color:var(--stop)}
+.c-CONFIGURING{background:rgba(224,179,92,.14);color:var(--warn)}
+.c-ERROR{background:rgba(224,121,106,.2);color:var(--stop)}
+.c-DISCONNECTED{background:rgba(154,161,168,.14);color:var(--ink2)}
+.c-ai_active{background:rgba(127,166,212,.14);color:var(--info)}
+.c-human_active{background:rgba(224,179,92,.16);color:var(--warn)}
+.c-closed{background:rgba(154,161,168,.12);color:var(--ink3)}
+.c-confirmed,.c-completed{background:rgba(78,203,142,.14);color:var(--ok)}
+.c-held,.c-payment_pending,.c-documents_pending{background:rgba(224,179,92,.14);color:var(--warn)}
+.c-cancelled,.c-expired{background:rgba(154,161,168,.12);color:var(--ink3)}
+.c-verified_public{background:rgba(78,203,142,.13);color:var(--ok)}
+.c-client_provided{background:rgba(127,166,212,.13);color:var(--info)}
+.c-assumed{background:rgba(224,179,92,.15);color:var(--warn)}
+.req{margin:6px 0 0;padding-left:18px;color:var(--ink2);font-size:12.5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.kpi{border:1px solid var(--hair);background:var(--panel);padding:14px}
+.kpi b{display:block;font-family:var(--mono);font-size:23px;color:var(--sand)}
+.kpi span{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+h2{font-size:15px;margin:0 0 10px;font-weight:700}
+h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin:20px 0 8px}
+.note{border-left:2px solid var(--sand-dim);padding:8px 12px;background:var(--panel);color:var(--ink2);font-size:12.5px;margin-bottom:12px}

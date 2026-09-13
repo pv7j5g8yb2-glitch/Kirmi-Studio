@@ -1,0 +1,729 @@
+// ---------------------------------------------------------------------------
+// Kirmi Core Engine - data model
+//
+// Two rules govern every model in this file.
+//
+// 1. Every tenant owned row carries `client_id`. Not "most rows", every row.
+//    Row level security policies in migration 0002 are written against that one
+//    column, so a table without it is a table outside the isolation guarantee.
+//
+// 2. Money is an integer count of the currency's minor unit (fils for AED).
+//    Floats never touch a price. 0.1 + 0.2 in a quote becomes an argument with
+//    a customer, and an argument with a customer becomes a refund.
+//    Ceiling per single amount is 2,147,483,647 fils, about AED 21.4m, which is
+//    two orders of magnitude above the most expensive month of any supercar.
+//
+// Every DateTime is timestamptz. A Dubai tenant and a US tenant read the same
+// row, and a rental window that shifts by four hours is a car handed over on the
+// wrong day, so the zone travels with the value rather than living in a comment.
+//
+// Onboarding a new client is INSERT INTO clients + INSERT INTO client_configurations.
+// There is no per client branch anywhere in src/.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// ENUMS
+// ===========================================================================
+
+enum ClientStatus {
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  CHURNED
+}
+
+enum ChannelType {
+  WHATSAPP
+  INSTAGRAM
+  TELEPHONY
+  WEB
+}
+
+/// The conversation state machine. HUMAN_TAKEOVER is terminal for the AI:
+/// nothing automated writes to a conversation sitting in that state.
+enum ConversationState {
+  NEW_ENQUIRY
+  QUALIFIED
+  PAYMENT_PENDING
+  HUMAN_TAKEOVER
+  CLOSED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  ON_HIRE
+  RESERVED
+  MAINTENANCE
+  RETIRED
+}
+
+enum RateBracket {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  EXPIRED
+  SUPERSEDED
+}
+
+enum ReservationStatus {
+  HOLD
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  EXPIRED
+}
+
+/// Why a human was pulled in. Every value here maps to a rule the code can
+/// evaluate, never to a vibe the model had about the message.
+enum EscalationReason {
+  AGE_BELOW_MINIMUM
+  LICENCE_TENURE_BELOW_MINIMUM
+  DOCUMENT_CHECK_FAILED
+  CUSTOM_RATE_REQUEST
+  EXPLICIT_HUMAN_REQUEST
+  PAYMENT_DISPUTE
+  LOW_CONFIDENCE
+  SLA_BREACH
+  INVENTORY_CONFLICT
+}
+
+enum EscalationStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+/// The billing ledger vocabulary. Revenue attribution and Kirmi's own B2B fee
+/// are both derived by replaying these events, so the enum is append only.
+enum AuditEventType {
+  ENQUIRY_RECEIVED
+  MESSAGE_SENT
+  QUOTE_ISSUED
+  HOLD_CREATED
+  HOLD_REJECTED
+  HOLD_EXPIRED
+  BOOKING_SECURED
+  BOOKING_CANCELLED
+  PAYMENT_CAPTURED
+  HUMAN_ESCALATION
+  AI_DISABLED
+  AI_ENABLED
+  WEBHOOK_RECEIVED
+  WEBHOOK_REJECTED
+  WEBHOOK_DUPLICATE
+  SLA_BREACH
+  CONFIG_CHANGED
+}
+
+enum AuditActor {
+  SYSTEM
+  AI
+  HUMAN
+  WEBHOOK
+}
+
+enum WebhookStatus {
+  RECEIVED
+  QUEUED
+  PROCESSED
+  FAILED
+  DUPLICATE
+}
+
+/// How Kirmi Studio bills this client. Pricing is variable by clinic or fleet
+/// size, so the numbers live per client rather than in a constant.
+enum FeeModel {
+  RETAINER
+  COMMISSION
+  HYBRID
+}
+
+// ===========================================================================
+// TENANCY
+// ===========================================================================
+
+/// The master tenant. One row per B2B client, for example DEIZ Rental Dubai.
+model Client {
+  id                    String       @id @default(uuid()) @db.Uuid
+  /// URL safe identifier used in webhook paths: /webhooks/meta/:clientSlug
+  slug                  String       @unique
+  legalName             String       @map("legal_name")
+  tradingName           String       @map("trading_name")
+  /// UAE trade licence number. Unique across the platform: two tenants cannot
+  /// claim the same licence, which is the cheapest fraud check available.
+  tradeLicenceNumber    String       @unique @map("trade_licence_number")
+  tradeLicenceExpiresOn DateTime?    @map("trade_licence_expires_on") @db.Date
+  /// Tax registration number, printed on every invoice.
+  taxRegistrationNumber String?      @unique @map("tax_registration_number")
+  jurisdiction          String       @default("AE-DU")
+  currency              String       @default("AED")
+  timezone              String       @default("Asia/Dubai")
+  status                ClientStatus @default(ONBOARDING)
+  onboardedAt           DateTime?    @map("onboarded_at") @db.Timestamptz(3)
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  configuration ClientConfiguration?
+  apiKeys       ClientApiKey[]
+  customers     Customer[]
+  identities    CustomerIdentity[]
+  categories    VehicleCategory[]
+  vehicles      Vehicle[]
+  conversations Conversation[]
+  messages      Message[]
+  quotes        Quote[]
+  reservations  Reservation[]
+  escalations   Escalation[]
+  webhookEvents WebhookEvent[]
+  auditLogs     PlatformAuditLog[]
+
+  @@index([status])
+  @@map("clients")
+}
+
+/// Everything that varies between clients. Hot, validated parameters get their
+/// own column so the pricing engine can rely on a type. Everything open ended
+/// stays JSON, validated by zod at read time (see src/config/tenant-schema.ts).
+/// Adding a client means writing this row, never writing code.
+model ClientConfiguration {
+  id       String @id @default(uuid()) @db.Uuid
+  clientId String @unique @map("client_id") @db.Uuid
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // --- Availability and language ---
+  /// { "mon": [{"open":"09:00","close":"21:00"}], ..., "exceptions": [...] }
+  openingHours       Json     @map("opening_hours")
+  supportedLanguages String[] @default(["en", "ar", "ru"]) @map("supported_languages")
+  defaultLanguage    String   @default("en") @map("default_language")
+
+  // --- Qualification rules, enforced in code and never by the model ---
+  minimumDriverAge     Int      @default(25) @map("minimum_driver_age")
+  minimumLicenceYears  Int      @default(1) @map("minimum_licence_years")
+  requiredDocuments    String[] @default(["passport", "driving_licence"]) @map("required_documents")
+  /// Categories that carry a stricter age gate, e.g. { "SUPERCAR": 30 }
+  categoryAgeOverrides Json     @default("{}") @map("category_age_overrides")
+
+  // --- Pricing parameters ---
+  vatBasisPoints            Int  @default(500) @map("vat_basis_points")
+  weeklyThresholdDays       Int  @default(7) @map("weekly_threshold_days")
+  monthlyThresholdDays      Int  @default(28) @map("monthly_threshold_days")
+  deliveryFeeMinor          Int  @default(0) @map("delivery_fee_minor")
+  freeDeliveryThresholdDays Int? @map("free_delivery_threshold_days")
+  defaultDepositMinor       Int  @default(0) @map("default_deposit_minor")
+  /// [{ "code":"HIGH_SEASON", "startsOn":"2026-12-15", "endsOn":"2027-01-10",
+  ///    "multiplierBasisPoints": 12500 }]
+  seasonalModifiers         Json @default("[]") @map("seasonal_modifiers")
+  /// [{ "code":"CHILD_SEAT", "label":"Child seat", "unit":"RENTAL", "priceMinor": 5000 }]
+  addOnCatalogue            Json @default("[]") @map("add_on_catalogue")
+  quoteValidMinutes         Int  @default(120) @map("quote_valid_minutes")
+  holdTtlMinutes            Int  @default(30) @map("hold_ttl_minutes")
+
+  // --- Channel credentials. Secret values are stored encrypted at rest. ---
+  metaAppSecretEncrypted   String? @map("meta_app_secret_encrypted")
+  metaVerifyToken          String? @map("meta_verify_token")
+  metaPhoneNumberId        String? @map("meta_phone_number_id")
+  metaBusinessAccountId    String? @map("meta_business_account_id")
+  instagramScopedPageId    String? @map("instagram_scoped_page_id")
+  /// Long lived page access token, used to SEND. Encrypted at rest: this one
+  /// can post as the client's business, so it is the most damaging single
+  /// credential in the row.
+  metaAccessTokenEncrypted String? @map("meta_access_token_encrypted")
+  metaGraphApiVersion      String  @default("v21.0") @map("meta_graph_api_version")
+  twilioAuthTokenEncrypted String? @map("twilio_auth_token_encrypted")
+  twilioNumber             String? @map("twilio_number")
+  /// Payment gateway access keys, encrypted blob: { "provider":"stripe", "secret":"<enc>" }
+  paymentAccessKeys        Json    @default("{}") @map("payment_access_keys")
+
+  // --- Human exception escalation alerts ---
+  /// [{ "kind":"whatsapp", "target":"+9715...", "hours":"ALWAYS" },
+  ///  { "kind":"webhook", "target":"https://..." }]
+  escalationTargets Json @default("[]") @map("escalation_targets")
+  /// { "AGE_BELOW_MINIMUM": "IMMEDIATE", "CUSTOM_RATE_REQUEST": "IMMEDIATE" }
+  escalationRules   Json @default("{}") @map("escalation_rules")
+
+  // --- Agent personality and guardrails (text only, never arithmetic) ---
+  agentDisplayName  String? @map("agent_display_name")
+  agentToneNotes    String? @map("agent_tone_notes")
+  systemPromptExtra String? @map("system_prompt_extra")
+
+  // --- Kirmi Studio commercial terms, drives the B2B fee metric ---
+  feeModel              FeeModel @default(HYBRID) @map("fee_model")
+  retainerMinor         Int      @default(0) @map("retainer_minor")
+  commissionBasisPoints Int      @default(0) @map("commission_basis_points")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("client_configurations")
+}
+
+/// Credentials for the client's own dashboard and human inbox socket.
+/// Only the hash is stored. Presenting the key proves which tenant you are.
+model ClientApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  clientId   String    @map("client_id") @db.Uuid
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  label      String
+  /// sha256 of the raw key. Lookup is by prefix, comparison is constant time.
+  keyPrefix  String    @map("key_prefix")
+  keyHash    String    @map("key_hash")
+  scopes     String[]  @default(["metrics:read", "inbox:read"])
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([keyPrefix])
+  @@index([clientId])
+  @@map("client_api_keys")
+}
+
+// ===========================================================================
+// PEOPLE
+// ===========================================================================
+
+model Customer {
+  id                  String    @id @default(uuid()) @db.Uuid
+  clientId            String    @map("client_id") @db.Uuid
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  fullName            String?   @map("full_name")
+  email               String?
+  locale              String?
+  dateOfBirth         DateTime? @map("date_of_birth") @db.Date
+  licenceNumber       String?   @map("licence_number")
+  licenceCountry      String?   @map("licence_country")
+  licenceIssuedOn     DateTime? @map("licence_issued_on") @db.Date
+  licenceExpiresOn    DateTime? @map("licence_expires_on") @db.Date
+  /// Set by the document service, never by the model.
+  documentsVerifiedAt DateTime? @map("documents_verified_at") @db.Timestamptz(3)
+  blocked             Boolean   @default(false)
+  blockedReason       String?   @map("blocked_reason")
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  identities    CustomerIdentity[]
+  conversations Conversation[]
+  quotes        Quote[]
+  reservations  Reservation[]
+
+  @@index([clientId, createdAt])
+  @@map("customers")
+}
+
+/// One human, many handles. A WhatsApp phone key and an Instagram scoped id can
+/// resolve to the same Customer, but only inside one tenant: the unique key is
+/// composite on client_id, so the same phone number is two different people if
+/// it enquires with two different clients.
+model CustomerIdentity {
+  id          String      @id @default(uuid()) @db.Uuid
+  clientId    String      @map("client_id") @db.Uuid
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  customerId  String      @map("customer_id") @db.Uuid
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channel     ChannelType
+  /// E.164 phone for WhatsApp and telephony, Instagram Scoped ID for IG DM.
+  externalId  String      @map("external_id")
+  displayName String?     @map("display_name")
+  profile     Json        @default("{}")
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([clientId, channel, externalId])
+  @@index([clientId, customerId])
+  @@map("customer_identities")
+}
+
+// ===========================================================================
+// FLEET
+// ===========================================================================
+
+model VehicleCategory {
+  id          String  @id @default(uuid()) @db.Uuid
+  clientId    String  @map("client_id") @db.Uuid
+  client      Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  code        String
+  name        String
+  description String?
+  bodyType    String? @map("body_type")
+  seats       Int?
+  sortOrder   Int     @default(0) @map("sort_order")
+  active      Boolean @default(true)
+
+  vehicles Vehicle[]
+
+  @@unique([clientId, code])
+  @@map("vehicle_categories")
+}
+
+model Vehicle {
+  id         String          @id @default(uuid()) @db.Uuid
+  clientId   String          @map("client_id") @db.Uuid
+  client     Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  categoryId String          @map("category_id") @db.Uuid
+  category   VehicleCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  make         String
+  model        String
+  year         Int
+  trim         String?
+  colour       String?
+  plateNumber  String  @map("plate_number")
+  plateEmirate String? @map("plate_emirate")
+  vin          String?
+
+  dailyRateMinor   Int  @map("daily_rate_minor")
+  weeklyRateMinor  Int? @map("weekly_rate_minor")
+  monthlyRateMinor Int? @map("monthly_rate_minor")
+  depositMinor     Int? @map("deposit_minor")
+  includedKmPerDay Int? @map("included_km_per_day")
+  extraKmRateMinor Int? @map("extra_km_rate_minor")
+
+  status       VehicleStatus @default(AVAILABLE)
+  imageUrls    String[]      @default([]) @map("image_urls")
+  /// Set while a car is out of service for a known window.
+  offRoadUntil DateTime?     @map("off_road_until") @db.Timestamptz(3)
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  quotes       Quote[]
+  reservations Reservation[]
+
+  @@unique([clientId, plateNumber])
+  @@index([clientId, status, active])
+  @@index([clientId, categoryId])
+  @@map("vehicles")
+}
+
+// ===========================================================================
+// CONVERSATION
+// ===========================================================================
+
+model Conversation {
+  id         String            @id @default(uuid()) @db.Uuid
+  clientId   String            @map("client_id") @db.Uuid
+  client     Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  customerId String            @map("customer_id") @db.Uuid
+  customer   Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channel    ChannelType
+  state      ConversationState @default(NEW_ENQUIRY)
+
+  /// The kill switch. Flipped to false by the escalation service, by a human in
+  /// the inbox, or by any failed validation rule. Every automated writer checks
+  /// this immediately before it speaks, so flipping it stops the AI mid flow.
+  aiEnabled Boolean @default(true) @map("ai_enabled")
+
+  externalThreadId String?           @map("external_thread_id")
+  language         String?
+  lastInboundAt    DateTime?         @map("last_inbound_at") @db.Timestamptz(3)
+  lastOutboundAt   DateTime?         @map("last_outbound_at") @db.Timestamptz(3)
+  takeoverReason   EscalationReason? @map("takeover_reason")
+  takeoverAt       DateTime?         @map("takeover_at") @db.Timestamptz(3)
+  assignedToUserId String?           @map("assigned_to_user_id")
+  closedAt         DateTime?         @map("closed_at") @db.Timestamptz(3)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  messages     Message[]
+  quotes       Quote[]
+  reservations Reservation[]
+  escalations  Escalation[]
+
+  @@index([clientId, state])
+  @@index([clientId, aiEnabled])
+  @@index([clientId, customerId, channel])
+  @@map("conversations")
+}
+
+model Message {
+  id                String           @id @default(uuid()) @db.Uuid
+  clientId          String           @map("client_id") @db.Uuid
+  client            Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  conversationId    String           @map("conversation_id") @db.Uuid
+  conversation      Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction         MessageDirection
+  channel           ChannelType
+  /// wamid... for WhatsApp, mid... for Instagram. The durable half of the
+  /// idempotency guard, behind the Redis interceptor that catches most replays.
+  providerMessageId String?          @map("provider_message_id")
+  body              String
+  mediaUrls         String[]         @default([]) @map("media_urls")
+  meta              Json             @default("{}")
+  /// Inbound receipt to outbound send, measured by the pipeline, in ms.
+  latencyMs         Int?             @map("latency_ms")
+  slaBreached       Boolean          @default(false) @map("sla_breached")
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([clientId, channel, providerMessageId])
+  @@index([clientId, conversationId, createdAt])
+  @@map("messages")
+}
+
+// ===========================================================================
+// COMMERCE
+// ===========================================================================
+
+/// A priced offer. Every number here was produced by src/core/pricing, and the
+/// full input trace is kept in `breakdown` so any figure can be recomputed and
+/// audited months later, including which engine version produced it.
+model Quote {
+  id             String        @id @default(uuid()) @db.Uuid
+  clientId       String        @map("client_id") @db.Uuid
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  conversationId String?       @map("conversation_id") @db.Uuid
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  customerId     String        @map("customer_id") @db.Uuid
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicleId      String        @map("vehicle_id") @db.Uuid
+  vehicle        Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  status QuoteStatus @default(DRAFT)
+
+  // --- the rental window ---
+  startAt      DateTime @map("start_at") @db.Timestamptz(3)
+  endAt        DateTime @map("end_at") @db.Timestamptz(3)
+  durationDays Int      @map("duration_days")
+
+  // --- how the base fare was reached ---
+  rateBracket        RateBracket @map("rate_bracket")
+  unitRateMinor      Int         @map("unit_rate_minor")
+  units              Int
+  remainderDays      Int         @default(0) @map("remainder_days")
+  remainderRateMinor Int         @default(0) @map("remainder_rate_minor")
+  baseFareMinor      Int         @map("base_fare_minor")
+
+  // --- modifiers ---
+  seasonalCode            String? @map("seasonal_code")
+  seasonalBasisPoints     Int     @default(10000) @map("seasonal_basis_points")
+  seasonalAdjustmentMinor Int     @default(0) @map("seasonal_adjustment_minor")
+  deliveryRequired        Boolean @default(false) @map("delivery_required")
+  deliveryFeeMinor        Int     @default(0) @map("delivery_fee_minor")
+  addOns                  Json    @default("[]") @map("add_ons")
+  addOnsTotalMinor        Int     @default(0) @map("add_ons_total_minor")
+
+  // --- the totals a customer sees ---
+  subtotalMinor  Int    @map("subtotal_minor")
+  vatBasisPoints Int    @map("vat_basis_points")
+  vatMinor       Int    @map("vat_minor")
+  totalMinor     Int    @map("total_minor")
+  depositMinor   Int    @map("deposit_minor")
+  currency       String @default("AED")
+
+  /// Machine checkable trace of every input and intermediate figure.
+  breakdown   Json
+  calcVersion String   @map("calc_version")
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  reservations Reservation[]
+
+  @@index([clientId, createdAt])
+  @@index([clientId, status])
+  @@map("quotes")
+}
+
+/// A claim on a specific car for a specific window. HOLD rows are as binding as
+/// CONFIRMED ones for availability purposes, which is what stops two customers
+/// being sold the same Lamborghini ninety milliseconds apart.
+model Reservation {
+  id             String        @id @default(uuid()) @db.Uuid
+  clientId       String        @map("client_id") @db.Uuid
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  quoteId        String?       @map("quote_id") @db.Uuid
+  quote          Quote?        @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  conversationId String?       @map("conversation_id") @db.Uuid
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  customerId     String        @map("customer_id") @db.Uuid
+  customer       Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  vehicleId      String        @map("vehicle_id") @db.Uuid
+  vehicle        Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  /// Human readable, given to the customer: DEIZ-7QF3M2
+  reference String
+  status    ReservationStatus @default(HOLD)
+
+  startAt       DateTime  @map("start_at") @db.Timestamptz(3)
+  endAt         DateTime  @map("end_at") @db.Timestamptz(3)
+  durationDays  Int       @map("duration_days")
+  holdExpiresAt DateTime? @map("hold_expires_at") @db.Timestamptz(3)
+
+  // --- delivery loop ---
+  deliveryRequired  Boolean   @default(false) @map("delivery_required")
+  deliveryAddress   String?   @map("delivery_address")
+  deliveryLatitude  Float?    @map("delivery_latitude")
+  deliveryLongitude Float?    @map("delivery_longitude")
+  deliveryAt        DateTime? @map("delivery_at") @db.Timestamptz(3)
+  collectionAddress String?   @map("collection_address")
+  collectionAt      DateTime? @map("collection_at") @db.Timestamptz(3)
+
+  // --- money ---
+  totalMinor       Int     @map("total_minor")
+  vatMinor         Int     @default(0) @map("vat_minor")
+  depositMinor     Int     @default(0) @map("deposit_minor")
+  paidMinor        Int     @default(0) @map("paid_minor")
+  depositHeldMinor Int     @default(0) @map("deposit_held_minor")
+  currency         String  @default("AED")
+  paymentProvider  String? @map("payment_provider")
+  paymentReference String? @map("payment_reference")
+
+  confirmedAt        DateTime? @map("confirmed_at") @db.Timestamptz(3)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  cancellationReason String?   @map("cancellation_reason")
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([clientId, reference])
+  @@index([clientId, vehicleId, startAt, endAt])
+  @@index([clientId, status])
+  @@index([status, holdExpiresAt])
+  @@map("reservations")
+}
+
+// ===========================================================================
+// HUMAN CONCIERGE
+// ===========================================================================
+
+/// One row per moment the engine decided a person is needed. This is the queue
+/// the human inbox dashboard renders, and the payload the WebSocket pushes.
+model Escalation {
+  id             String           @id @default(uuid()) @db.Uuid
+  clientId       String           @map("client_id") @db.Uuid
+  client         Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  conversationId String           @map("conversation_id") @db.Uuid
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reason         EscalationReason
+  status         EscalationStatus @default(OPEN)
+  summary        String
+  context        Json             @default("{}")
+  notifiedAt     DateTime?        @map("notified_at") @db.Timestamptz(3)
+  acknowledgedAt DateTime?        @map("acknowledged_at") @db.Timestamptz(3)
+  acknowledgedBy String?          @map("acknowledged_by")
+  resolvedAt     DateTime?        @map("resolved_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([clientId, status, createdAt])
+  @@map("escalations")
+}
+
+// ===========================================================================
+// PLATFORM PLUMBING
+// ===========================================================================
+
+/// Durable carrier history. The Redis interceptor drops most duplicates in
+/// under a millisecond; this table is what survives a Redis flush and what an
+/// engineer reads at 2am when a client asks why a message never arrived.
+model WebhookEvent {
+  id              String        @id @default(uuid()) @db.Uuid
+  clientId        String        @map("client_id") @db.Uuid
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  provider        String
+  /// Meta message id, Twilio CallSid, or a sha256 of the raw body when the
+  /// carrier gives us nothing stable to key on.
+  externalEventId String        @map("external_event_id")
+  eventType       String?       @map("event_type")
+  signatureValid  Boolean       @map("signature_valid")
+  status          WebhookStatus @default(RECEIVED)
+  attempts        Int           @default(0)
+  payload         Json
+  error           String?
+  receivedAt      DateTime      @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt     DateTime?     @map("processed_at") @db.Timestamptz(3)
+
+  @@unique([clientId, provider, externalEventId])
+  @@index([clientId, receivedAt])
+  @@map("webhook_events")
+}
+
+/// The billing ledger. Auto incrementing so the sequence itself is evidence of
+/// order, and append only by convention: nothing in src/ ever updates or
+/// deletes a row here. Revenue attributed to Kirmi and the fee charged for it
+/// are both replayed from this table, which is what makes an invoice arguable
+/// in the client's favour rather than a number we assert.
+model PlatformAuditLog {
+  id        BigInt         @id @default(autoincrement())
+  clientId  String         @map("client_id") @db.Uuid
+  client    Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  eventType AuditEventType @map("event_type")
+  actor     AuditActor     @default(SYSTEM)
+
+  conversationId String?      @map("conversation_id") @db.Uuid
+  customerId     String?      @map("customer_id") @db.Uuid
+  vehicleId      String?      @map("vehicle_id") @db.Uuid
+  quoteId        String?      @map("quote_id") @db.Uuid
+  reservationId  String?      @map("reservation_id") @db.Uuid
+  channel        ChannelType?
+
+  /// Gross value attributed to this event, in minor units. Only set on events
+  /// that actually move money, which keeps SUM() honest.
+  revenueMinor  Int?   @map("revenue_minor")
+  /// Kirmi's share of that value, computed at event time from the fee terms in
+  /// force then, so a later contract change cannot rewrite history.
+  kirmiFeeMinor Int?   @map("kirmi_fee_minor")
+  currency      String @default("AED")
+
+  /// Set when the event was produced by a keyed external delivery, so a replay
+  /// cannot double count revenue.
+  idempotencyKey String?  @map("idempotency_key")
+  payload        Json     @default("{}")
+  occurredAt     DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  @@unique([clientId, idempotencyKey])
+  @@index([clientId, eventType, occurredAt])
+  @@index([clientId, occurredAt])
+  @@map("platform_audit_logs")
+}
+
+// ===========================================================================
+// ROUTING PROJECTION
+// ===========================================================================
+
+/// The one table deliberately outside row level security, and the reason is
+/// ordering: an inbound webhook arrives addressed to a slug or a WhatsApp phone
+/// number id, and we cannot scope a query to a tenant until we know which
+/// tenant it is. Something has to be readable before that point.
+///
+/// So this holds routing identifiers only. No customers, no prices, no
+/// conversations, no secrets. Everything in here is either already public (a
+/// trading name) or is an identifier the caller must already possess to reach
+/// us at all. Reading the entire table tells an attacker which businesses use
+/// Kirmi, and nothing else.
+///
+/// It is maintained by database triggers on clients and client_configurations,
+/// never by application code, so it cannot drift from the rows it projects.
+model TenantDirectory {
+  clientId              String       @id @map("client_id") @db.Uuid
+  slug                  String       @unique
+  status                ClientStatus
+  tradingName           String       @map("trading_name")
+  timezone              String
+  metaPhoneNumberId     String?      @map("meta_phone_number_id")
+  metaBusinessAccountId String?      @map("meta_business_account_id")
+  instagramScopedPageId String?      @map("instagram_scoped_page_id")
+  twilioNumber          String?      @map("twilio_number")
+  updatedAt             DateTime     @default(now()) @map("updated_at") @db.Timestamptz(3)
+
+  @@index([metaPhoneNumberId])
+  @@index([instagramScopedPageId])
+  @@index([twilioNumber])
+  @@map("tenant_directory")
+}

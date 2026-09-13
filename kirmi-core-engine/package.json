@@ -1,0 +1,58 @@
+{
+  "name": "kirmi-core-engine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kirmi Studio multi-tenant revenue conversion engine. One codebase, many B2B clients, zero core changes to onboard.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src tests --ext .ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "worker": "tsx src/queue/workers/index.ts",
+    "worker:prod": "node dist/queue/workers/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "db:roles": "psql \"$SUPERUSER_DATABASE_URL\" -f scripts/provision-roles.sql",
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest",
+    "db:verify-isolation": "psql \"$DATABASE_URL\" -f scripts/verify-isolation.sql",
+    "db:backfill-directory": "tsx scripts/backfill-tenant-directory.ts",
+    "db:issue-key": "tsx scripts/issue-api-key.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bullmq": "^5.34.0",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.5",
+    "@types/ws": "^8.5.13",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^8.57.1",
+    "prisma": "^6.19.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
+  }
+}

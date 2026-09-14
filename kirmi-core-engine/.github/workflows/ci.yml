@@ -1,0 +1,119 @@
+name: CI
+
+# Runs on every push and every pull request, including from a contractor's
+# branch. This is the safety net: the guarantees this engine sells a client
+# (tenant isolation, no double bookings, a reply inside the SLA) are all
+# properties nobody can eyeball in a diff, and two of them fail SILENTLY when
+# broken. Isolation in particular produces no error, no failing request and no
+# log line. It just starts showing one client another client's customers.
+#
+# So the suite runs against a real PostgreSQL and a real Redis, never mocks.
+# A mock cannot demonstrate that FOR UPDATE NOWAIT prevents a double booking;
+# it proves only that the mock agrees with itself.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # The app role. NOBYPASSRLS, and that is the whole point: if CI ran as a
+      # superuser, every row level security policy would be silently ignored
+      # and the isolation suite would pass against a system with no isolation.
+      DATABASE_URL: postgresql://kirmi_app:ci_password@localhost:5432/kirmi_test?schema=public
+      MIGRATION_DATABASE_URL: postgresql://kirmi_migrate:ci_password@localhost:5432/kirmi_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      REDIS_KEY_PREFIX: kirmi-ci
+      # psql rejects Prisma's ?schema= parameter, so the raw psql steps need
+      # their own copies of these URLs without it.
+      PSQL_SUPER: postgresql://postgres:postgres@localhost:5432/postgres
+      PSQL_MIGRATE: postgresql://kirmi_migrate:ci_password@localhost:5432/kirmi_test
+      NODE_ENV: test
+      LOG_LEVEL: silent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Provision the three database roles
+        run: |
+          psql "$PSQL_SUPER" \
+            -v ON_ERROR_STOP=1 \
+            -v app_password="'ci_password'" \
+            -v migrate_password="'ci_password'" \
+            -v admin_password="'ci_password'" \
+            -f scripts/provision-roles.sql
+          psql "$PSQL_SUPER" \
+            -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE kirmi_migrate WITH PASSWORD 'ci_password';" \
+            -c "ALTER ROLE kirmi_app     WITH PASSWORD 'ci_password';" \
+            -c "ALTER ROLE kirmi_admin   WITH PASSWORD 'ci_password';" \
+            -c "CREATE DATABASE kirmi_test OWNER kirmi_migrate;"
+
+      - name: Apply migrations
+        run: DATABASE_URL="$MIGRATION_DATABASE_URL" npx prisma migrate deploy
+
+      - name: Prove row level security is actually on
+        # Cheap, and it catches the one failure mode that produces no error of
+        # its own. A new tenant scoped table that nobody enrolled in a policy
+        # is readable by every client on the platform.
+        run: psql "$PSQL_MIGRATE" -v ON_ERROR_STOP=1 -f scripts/verify-isolation.sql
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+      - name: Fail if the schema and the migrations have drifted apart
+        # Against a database built ONLY from the migration files, never against
+        # a developer's local database. A drift check run against a dirty
+        # database is the check passing for the wrong reason, which has already
+        # happened once on this repository.
+        run: |
+          psql "$PSQL_SUPER" -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE kirmi_drift OWNER kirmi_migrate;"
+          DATABASE_URL="postgresql://kirmi_migrate:ci_password@localhost:5432/kirmi_drift?schema=public" \
+            npx prisma migrate deploy
+          npx prisma migrate diff \
+            --from-url "postgresql://kirmi_migrate:ci_password@localhost:5432/kirmi_drift?schema=public" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code
+
+      - run: npm run build

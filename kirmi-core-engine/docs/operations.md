@@ -159,3 +159,25 @@ are granted in migration `20260914181718` rather than in `provision-roles.sql`,
 because that script runs before any table exists.
 
 Never configure a running service with this role.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push and pull request, against a real
+PostgreSQL 16 and Redis 7 rather than mocks.
+
+It exists because the three guarantees this engine sells cannot be checked by
+reading a diff, and two of them fail *silently* when broken:
+
+| Step | What it catches |
+|---|---|
+| `provision-roles.sql` then migrate | The app role connecting with BYPASSRLS, which turns isolation off with no error |
+| `verify-isolation.sql` | A new tenant scoped table nobody enrolled in a policy |
+| `npm test` | Double bookings, SLA regressions, window and attribution logic |
+| `prisma migrate diff` | A schema edit that never made it into a migration |
+
+The drift check runs against a database built **only** from the migration
+files. Running it against a developer's existing database is the check passing
+for the wrong reason, which has already happened once here.
+
+If you hand this repository to a contractor, this workflow is the contract. A
+green tick means they have not broken anything a client is paying for.

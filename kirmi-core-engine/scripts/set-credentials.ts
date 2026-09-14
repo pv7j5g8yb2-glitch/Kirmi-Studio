@@ -56,11 +56,30 @@ const FIELDS = {
   "twilio-number": { column: "twilioNumber", encrypted: false, what: "Twilio sending number in +971... form." },
 } as const;
 
+/** Stripe lives inside the paymentAccessKeys blob rather than its own column. */
+const PAYMENT_FIELDS = {
+  "stripe-secret": { key: "secretKeyEncrypted", what: "Stripe secret key, starts with sk_. Creates the payment links." },
+  "stripe-webhook-secret": {
+    key: "webhookSecretEncrypted",
+    what: "Stripe endpoint signing secret, starts with whsec_. Without it no payment is ever confirmed.",
+  },
+} as const;
+
 type Field = keyof typeof FIELDS;
+
+function isChannelField(value: string): value is Field {
+  return Object.prototype.hasOwnProperty.call(FIELDS, value);
+}
+
+type PaymentField = keyof typeof PAYMENT_FIELDS;
+
+function isPaymentField(value: string): value is PaymentField {
+  return Object.prototype.hasOwnProperty.call(PAYMENT_FIELDS, value);
+}
 
 async function main(): Promise<void> {
   const slug = process.argv[2];
-  const field = process.argv[3] as Field | "--show" | undefined;
+  const field = process.argv[3];
   const value = process.argv.slice(4).join(" ");
 
   if (!slug) {
@@ -81,7 +100,52 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (!(field in FIELDS)) {
+  // Stripe keys live inside a JSON blob, so they merge rather than overwrite.
+  // Setting the secret key must never clear the webhook secret beside it.
+  if (isPaymentField(field)) {
+    if (!value) {
+      process.stdout.write(`\nNo value given for ${field}.\n\n`);
+      process.exitCode = 1;
+      return;
+    }
+    const spec = PAYMENT_FIELDS[field];
+
+    if (field === "stripe-secret" && !value.startsWith("sk_")) {
+      process.stdout.write(`\nA Stripe secret key starts with "sk_". That looks like a publishable key or something else.\n\n`);
+      process.exitCode = 1;
+      return;
+    }
+    if (field === "stripe-webhook-secret" && !value.startsWith("whsec_")) {
+      process.stdout.write(
+        `\nA Stripe endpoint signing secret starts with "whsec_". You get it from the webhook you created, ` +
+          `not from the API keys page.\n\n`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    await withTenant(entry.clientId, async (tx) => {
+      const current = await tx.clientConfiguration.findUnique({
+        where: { clientId: entry.clientId },
+        select: { paymentAccessKeys: true },
+      });
+      const keys = (current?.paymentAccessKeys as Record<string, string> | null) ?? {};
+      const merged: Record<string, string> = {
+        ...keys,
+        provider: keys["provider"] ?? "stripe",
+        [spec.key]: encryptSecret(value),
+      };
+      await tx.clientConfiguration.update({
+        where: { clientId: entry.clientId },
+        data: { paymentAccessKeys: merged },
+      });
+    });
+
+    process.stdout.write(`\nSaved ${field} for ${slug}, encrypted.\n  ends with ...${value.slice(-4)}\n\n`);
+    return;
+  }
+
+  if (!isChannelField(field)) {
     process.stdout.write(`\n"${field}" is not a field I know about.\n`);
     usage();
     process.exitCode = 1;
@@ -152,7 +216,19 @@ async function show(clientId: string, slug: string): Promise<void> {
   for (const [name, spec] of Object.entries(FIELDS)) {
     const raw = (config as Record<string, string | null>)[spec.column];
     const state = raw ? (spec.encrypted ? "set (encrypted)" : `set, ends ...${raw.slice(-4)}`) : "not set";
-    process.stdout.write(`  ${name.padEnd(20)} ${state}\n`);
+    process.stdout.write(`  ${name.padEnd(24)} ${state}\n`);
+  }
+
+  const keys = await withTenant(clientId, async (tx) => {
+    const row = await tx.clientConfiguration.findUnique({
+      where: { clientId },
+      select: { paymentAccessKeys: true },
+    });
+    return (row?.paymentAccessKeys as Record<string, unknown> | null) ?? {};
+  });
+  process.stdout.write(`  ${"payment provider".padEnd(24)} ${String(keys["provider"] ?? "manual")}\n`);
+  for (const [name, spec] of Object.entries(PAYMENT_FIELDS)) {
+    process.stdout.write(`  ${name.padEnd(24)} ${keys[spec.key] ? "set (encrypted)" : "not set"}\n`);
   }
   process.stdout.write("\n");
 }
@@ -163,7 +239,10 @@ function usage(): void {
   process.stdout.write("  npm run set-credentials -- <slug> <field> <value>\n\n");
   process.stdout.write("Fields:\n");
   for (const [name, spec] of Object.entries(FIELDS)) {
-    process.stdout.write(`  ${name.padEnd(20)} ${spec.what}\n`);
+    process.stdout.write(`  ${name.padEnd(24)} ${spec.what}\n`);
+  }
+  for (const [name, spec] of Object.entries(PAYMENT_FIELDS)) {
+    process.stdout.write(`  ${name.padEnd(24)} ${spec.what}\n`);
   }
   process.stdout.write("\n");
 }

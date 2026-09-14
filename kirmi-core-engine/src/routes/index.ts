@@ -5,6 +5,7 @@ import { healthRoutes } from "./health.routes.js";
 import { inboxRoutes } from "./inbox.routes.js";
 import { metricsRoutes } from "./metrics.routes.js";
 import { metaWebhookRoutes } from "./webhooks/meta.routes.js";
+import { stripeWebhookRoutes } from "./webhooks/stripe.routes.js";
 import { twilioWebhookRoutes } from "./webhooks/twilio.routes.js";
 
 /**
@@ -21,6 +22,7 @@ export function buildRoutes(container: Container): Router {
   router.use("/health", healthRoutes());
   router.use("/webhooks", metaWebhookRoutes(container));
   router.use("/webhooks", twilioWebhookRoutes(container));
+  router.use("/webhooks", stripeWebhookRoutes(container));
   router.use("/api/metrics", metricsRoutes(container));
   router.use("/api/inbox", inboxRoutes(container));
   router.use("/api/attribution", attributionRoutes(container));

@@ -172,12 +172,11 @@ say all three.
 
 Stated plainly, because a README that only lists strengths is not useful.
 
-- Payment links are issued by `src/payments`, with a Stripe Checkout provider
-  and a `manual` provider. Manual is not a placeholder: it is the correct
-  setting for a client with no gateway, and it lets a pilot go live without
-  waiting on somebody's finance department. Marking a booking paid still needs
-  `confirm()` to be called; there is no inbound Stripe webhook handler yet, so
-  settlement is confirmed by the desk rather than by the gateway.
+- Payments are closed end to end. `src/payments` issues the link, and
+  `POST /webhooks/stripe/:clientSlug` confirms the reservation when Stripe says
+  the money arrived, per tenant and signature verified. A `manual` provider
+  remains for clients with no gateway, where settlement is confirmed at the
+  desk. Refunds and disputes are not handled; those are still a person's job.
 - Document verification is a flag on `Customer`, set by whatever process does
   the checking. There is no OCR or identity provider integration.
 - The LLM client speaks to the Anthropic Messages API over `fetch`. It has not

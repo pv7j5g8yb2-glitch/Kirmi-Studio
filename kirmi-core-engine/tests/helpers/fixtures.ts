@@ -38,6 +38,7 @@ export function tenantFixture(overrides: Partial<TenantProfile> = {}): TenantPro
       ],
       quoteValidMinutes: 120,
       holdTtlMinutes: 30,
+      paymentHoldMinutes: 240,
     },
     openingHours: { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [], exceptions: [] },
     escalation: { targets: [], rules: {} },

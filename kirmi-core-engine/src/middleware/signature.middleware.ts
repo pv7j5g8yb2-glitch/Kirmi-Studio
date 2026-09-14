@@ -1,6 +1,7 @@
+import { createHmac } from "node:crypto";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { env, isProduction } from "../config/env.js";
-import { sha256Hex, verifyMetaSignature, verifyTwilioBodyHash, verifyTwilioSignature } from "../core/crypto.js";
+import { safeEqual, sha256Hex, verifyMetaSignature, verifyTwilioBodyHash, verifyTwilioSignature } from "../core/crypto.js";
 import { SignatureVerificationError } from "../core/errors.js";
 import type { ClientConfigService } from "../services/client-config.service.js";
 import type { WebhookService } from "../services/webhook.service.js";
@@ -135,4 +136,82 @@ function readBodyHash(req: Request): string | undefined {
 /** Never true in production: env() refuses to start if it is set there. */
 function allowUnsigned(): boolean {
   return env().ALLOW_UNSIGNED_WEBHOOKS && !isProduction();
+}
+
+/**
+ * ===========================================================================
+ * STRIPE
+ * ===========================================================================
+ *
+ * Stripe signs `timestamp.rawBody` with the endpoint's own signing secret and
+ * sends it as `Stripe-Signature: t=...,v1=...`. Note what is signed: the
+ * timestamp is INSIDE the signed payload, which is what makes the replay
+ * window below meaningful rather than decorative.
+ *
+ * This matters more here than on any other webhook in the engine. A forged
+ * Meta message produces a wrong reply. A forged Stripe event marks a booking
+ * as paid, moves a car off the market, and puts a line on a client's
+ * commission invoice for money that never arrived.
+ *
+ * Per tenant, like every other secret: each client connects their own Stripe
+ * account, so each has their own endpoint secret. A shared platform secret
+ * would mean any client could confirm any other client's bookings.
+ */
+export function verifyStripeWebhook(configService: ClientConfigService): RequestHandler {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    void (async () => {
+      try {
+        const clientId = req.routing?.clientId;
+        if (!clientId) throw new SignatureVerificationError("Signature check ran before tenant resolution");
+
+        const rawBody = req.rawBody;
+        if (!rawBody) throw new SignatureVerificationError("No raw body captured for verification");
+
+        const secret = await configService.loadPaymentWebhookSecret(clientId);
+        if (!secret) {
+          throw new SignatureVerificationError("No Stripe webhook secret configured for this client", { clientId });
+        }
+
+        if (!verifyStripeSignature(rawBody, req.get("stripe-signature"), secret)) {
+          throw new SignatureVerificationError("Stripe signature verification failed", { clientId });
+        }
+
+        next();
+      } catch (err) {
+        next(err);
+      }
+    })();
+  };
+}
+
+/** Five minutes, which is Stripe's own recommendation. */
+const STRIPE_TOLERANCE_SECONDS = 300;
+
+export function verifyStripeSignature(
+  rawBody: Buffer,
+  header: string | undefined,
+  secret: string,
+  now: Date = new Date(),
+): boolean {
+  if (!header) return false;
+
+  let timestamp: string | null = null;
+  const candidates: string[] = [];
+  for (const part of header.split(",")) {
+    const [key, value] = part.trim().split("=");
+    if (key === "t" && value) timestamp = value;
+    // v1 can appear more than once during a secret rotation, and Stripe sends
+    // every valid signature. Any one matching is a pass.
+    if (key === "v1" && value) candidates.push(value);
+  }
+  if (!timestamp || candidates.length === 0) return false;
+
+  const age = Math.abs(Math.floor(now.getTime() / 1000) - Number(timestamp));
+  if (!Number.isFinite(age) || age > STRIPE_TOLERANCE_SECONDS) return false;
+
+  const expected = createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody.toString("utf8")}`)
+    .digest("hex");
+
+  return candidates.some((candidate) => safeEqual(candidate, expected));
 }

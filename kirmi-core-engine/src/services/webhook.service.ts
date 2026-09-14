@@ -30,7 +30,7 @@ export class WebhookService {
    */
   async record(params: {
     clientId: string;
-    provider: "meta" | "twilio";
+    provider: "meta" | "twilio" | "stripe";
     externalEventId: string;
     eventType?: string | null;
     signatureValid: boolean;

@@ -170,6 +170,24 @@ export class ClientConfigService {
   }
 
   /**
+   * The Stripe endpoint signing secret for this client, decrypted.
+   *
+   * Its own method rather than part of loadSecrets, because it is read on an
+   * unauthenticated public route before anything is trusted, and a narrow
+   * accessor keeps every other credential out of that code path.
+   */
+  async loadPaymentWebhookSecret(clientId: string): Promise<string | null> {
+    return this.db.withTenant(clientId, async (tx) => {
+      const config = await tx.clientConfiguration.findUnique({
+        where: { clientId },
+        select: { paymentAccessKeys: true },
+      });
+      const keys = config?.paymentAccessKeys as { webhookSecretEncrypted?: string } | null;
+      return this.decryptOrNull(keys?.webhookSecretEncrypted ?? null, clientId, "paymentWebhookSecret");
+    });
+  }
+
+  /**
    * The non secret half of the payment configuration: which provider, and how
    * much to capture up front. The secret half comes back from loadSecrets, and
    * the two stay apart so the provider choice can be read and logged freely.
@@ -252,6 +270,7 @@ export class ClientConfigService {
         addOnCatalogue: parse(addOnCatalogueSchema, config.addOnCatalogue, "addOnCatalogue"),
         quoteValidMinutes: config.quoteValidMinutes,
         holdTtlMinutes: config.holdTtlMinutes,
+        paymentHoldMinutes: config.paymentHoldMinutes,
       },
 
       openingHours: parse(openingHoursSchema, config.openingHours, "openingHours"),

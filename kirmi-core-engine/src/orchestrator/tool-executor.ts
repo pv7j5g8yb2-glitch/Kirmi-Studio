@@ -4,6 +4,7 @@ import { formatMoney, toMajor } from "../core/money.js";
 import { AiDisabledError, NotFoundError, VehicleContendedError, VehicleUnavailableError, isAppError } from "../core/errors.js";
 import type { Logger } from "../core/logger.js";
 import { evaluateQualification, minimumAgeFor } from "../core/qualification.js";
+import { minutesFromNow } from "../core/time.js";
 import type { TenantProfile } from "../core/types.js";
 import type { TenantDatabase, TenantTx } from "../db/tenant-context.js";
 import { providerFor } from "../payments/registry.js";
@@ -362,6 +363,12 @@ export class ToolExecutor {
             paymentUrl: link.url,
             paymentReference: link.providerReference,
             paymentLinkSentAt: new Date(),
+            // The hold has to outlive the payment, or the sweeper releases the
+            // car before the customer has finished typing their card number.
+            // Thirty minutes is right for "let me think"; it is badly wrong for
+            // a link sent at 11pm, where the booking would be marked EXPIRED
+            // and quietly drop off the commission report before anyone woke up.
+            holdExpiresAt: minutesFromNow(tenant.pricing.paymentHoldMinutes),
           },
         });
       });

@@ -68,6 +68,17 @@ const fileSchema = z.object({
       defaultDepositFils: z.number().int().min(0).default(0),
       quoteValidMinutes: z.number().int().min(5).default(120),
       holdMinutes: z.number().int().min(5).default(30),
+      /** The car must stay held long enough for the customer to actually pay.
+       *  Thirty minutes is right for "let me think", and badly wrong for a
+       *  link sent at 11pm. */
+      paymentHoldMinutes: z.number().int().min(30).default(240),
+    })
+    .default({}),
+
+  payments: z
+    .object({
+      provider: z.enum(["stripe", "manual"]).default("manual"),
+      captureUpfrontPercent: z.number().min(0).max(100).default(100),
     })
     .default({}),
 
@@ -302,6 +313,14 @@ function crossCheck(file: ClientFile): string[] {
     }
   }
 
+  if (file.pricing.paymentHoldMinutes <= file.pricing.holdMinutes) {
+    problems.push(
+      `paymentHoldMinutes (${file.pricing.paymentHoldMinutes}) must be longer than holdMinutes ` +
+        `(${file.pricing.holdMinutes}). Otherwise a car is released before the customer can pay for it, ` +
+        `and the booking drops off the commission report.`,
+    );
+  }
+
   if (file.vehicles.length === 0) problems.push("No vehicles, so there is nothing to quote.");
   if (file.templates.length === 0) {
     problems.push("No templates, so no follow up could ever be sent and conversion stays where it is.");
@@ -389,6 +408,13 @@ async function apply(file: ClientFile): Promise<{ clientId: string; created: boo
       defaultDepositMinor: file.pricing.defaultDepositFils,
       quoteValidMinutes: file.pricing.quoteValidMinutes,
       holdTtlMinutes: file.pricing.holdMinutes,
+      paymentHoldMinutes: file.pricing.paymentHoldMinutes,
+      // Only the provider choice and capture rate. The secret keys are set
+      // separately so re-running this file can never wipe a credential.
+      paymentAccessKeys: {
+        provider: file.payments.provider,
+        depositCaptureBasisPoints: Math.round(file.payments.captureUpfrontPercent * 100),
+      },
       seasonalModifiers: file.seasons.map((s) => ({
         code: s.code,
         ...(s.label ? { label: s.label } : {}),

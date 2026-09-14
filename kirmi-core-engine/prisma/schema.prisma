@@ -262,6 +262,14 @@ model ClientConfiguration {
   addOnCatalogue            Json @default("[]") @map("add_on_catalogue")
   quoteValidMinutes         Int  @default(120) @map("quote_valid_minutes")
   holdTtlMinutes            Int  @default(30) @map("hold_ttl_minutes")
+  /// How long a car stays held once a payment link has actually been sent.
+  ///
+  /// Separate from holdTtlMinutes on purpose, and the difference is the whole
+  /// point. Thirty minutes is right for "let me think about it". It is badly
+  /// wrong for "here is the link" at 11pm, because the sweeper releases the
+  /// hold at 11:30, the booking is marked EXPIRED, and a booking the engine
+  /// genuinely won disappears from the commission report before anybody wakes up.
+  paymentHoldMinutes        Int  @default(240) @map("payment_hold_minutes")
 
   // --- Channel credentials. Secret values are stored encrypted at rest. ---
   metaAppSecretEncrypted   String? @map("meta_app_secret_encrypted")

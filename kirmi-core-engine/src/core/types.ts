@@ -63,6 +63,8 @@ export interface TenantProfile {
     addOnCatalogue: AddOnDefinition[];
     quoteValidMinutes: number;
     holdTtlMinutes: number;
+    /** The longer window that applies once a payment link has gone out. */
+    paymentHoldMinutes: number;
   };
 
   openingHours: OpeningHours;

@@ -181,3 +181,44 @@ for the wrong reason, which has already happened once here.
 
 If you hand this repository to a contractor, this workflow is the contract. A
 green tick means they have not broken anything a client is paying for.
+
+## Payments, and the hold window
+
+Two settings, and the relationship between them is the one that costs money if
+it is wrong.
+
+| Setting | Default | What it governs |
+|---|---|---|
+| `holdTtlMinutes` | 30 | A car held while a customer thinks about it |
+| `paymentHoldMinutes` | 240 | A car held once a payment link has actually gone out |
+
+The second must always be longer than the first, and the onboarding script
+refuses a file where it is not.
+
+The failure it prevents is silent and nightly. A customer agrees at 11pm, a
+hold is placed, a payment link is sent. At 11.30 the sweeper releases the hold
+and marks the reservation EXPIRED. The attribution report counts HOLD,
+CONFIRMED and COMPLETED, so a booking the engine genuinely won, and that the
+customer genuinely paid for, is invoiced as nothing. No error, no alert, just a
+smaller figure at the end of the month.
+
+### Connecting Stripe for a client
+
+Each client connects their own Stripe account, so the money goes to them and
+never through Kirmi.
+
+```
+npm run onboard -- onboarding/<client>.json     # sets provider: "stripe"
+npm run set-credentials -- <slug> stripe-secret sk_live_...
+npm run set-credentials -- <slug> stripe-webhook-secret whsec_...
+```
+
+Then in that client's Stripe dashboard, add an endpoint pointing at
+`https://<host>/webhooks/stripe/<slug>` subscribed to
+`checkout.session.completed`, and paste its signing secret into the command
+above.
+
+Without the webhook secret no payment is ever confirmed, and every booking
+expires. `npm run doctor` will not catch this, because the credential belongs
+to the client rather than the platform. Test it with Stripe's own "send test
+webhook" button before go-live.

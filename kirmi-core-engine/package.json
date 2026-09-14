@@ -27,7 +27,11 @@
     "test:watch": "vitest",
     "db:verify-isolation": "psql \"$DATABASE_URL\" -f scripts/verify-isolation.sql",
     "db:backfill-directory": "tsx scripts/backfill-tenant-directory.ts",
-    "db:issue-key": "tsx scripts/issue-api-key.ts"
+    "db:issue-key": "tsx scripts/issue-api-key.ts",
+    "doctor": "tsx scripts/doctor.ts",
+    "price-check": "tsx scripts/price-check.ts",
+    "onboard": "tsx scripts/onboard.ts",
+    "set-credentials": "tsx scripts/set-credentials.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

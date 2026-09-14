@@ -1,0 +1,142 @@
+{
+  "_readme": [
+    "Fill this in, save it as <name>.json, then run:  npm run onboard -- onboarding/<name>.json",
+    "Every money figure is in FILS, not dirhams. AED 1,800 a day is 180000.",
+    "Running it twice on the same slug updates the client rather than creating a second one.",
+    "Anything you leave out keeps a sensible default. Nothing here is secret: tokens are set separately."
+  ],
+
+  "slug": "deiz",
+  "legalName": "DEIZ Rental LLC",
+  "tradingName": "DEIZ Rental",
+  "tradeLicenceNumber": "CHANGE-ME",
+  "currency": "AED",
+  "timezone": "Asia/Dubai",
+
+  "languages": ["en", "ar", "ru"],
+  "defaultLanguage": "en",
+
+  "rules": {
+    "minimumDriverAge": 25,
+    "minimumLicenceYears": 1,
+    "requiredDocuments": ["passport", "driving_licence", "visa_or_entry_stamp"],
+    "strictAgeByCategory": { "SUPERCAR": 30 }
+  },
+
+  "pricing": {
+    "vatPercent": 5,
+    "weeklyRateFromDays": 7,
+    "monthlyRateFromDays": 28,
+    "deliveryFeeFils": 15000,
+    "freeDeliveryFromDays": 7,
+    "defaultDepositFils": 500000,
+    "quoteValidMinutes": 120,
+    "holdMinutes": 30
+  },
+
+  "seasons": [
+    {
+      "code": "NEW_YEAR",
+      "label": "New Year peak",
+      "from": "2026-12-20",
+      "to": "2027-01-05",
+      "changePercent": 30
+    },
+    {
+      "code": "SUMMER_LOW",
+      "label": "Summer",
+      "from": "2027-06-15",
+      "to": "2027-08-31",
+      "changePercent": -15
+    }
+  ],
+
+  "addOns": [
+    { "code": "CHILD_SEAT", "label": "Child seat", "per": "rental", "priceFils": 7500 },
+    { "code": "ADDITIONAL_DRIVER", "label": "Additional driver", "per": "rental", "priceFils": 15000 },
+    { "code": "EXTRA_KM", "label": "Extra kilometre bundle", "per": "day", "priceFils": 5000 }
+  ],
+
+  "openingHours": {
+    "mon": [{ "open": "09:00", "close": "21:00" }],
+    "tue": [{ "open": "09:00", "close": "21:00" }],
+    "wed": [{ "open": "09:00", "close": "21:00" }],
+    "thu": [{ "open": "09:00", "close": "21:00" }],
+    "fri": [{ "open": "14:00", "close": "22:00" }],
+    "sat": [{ "open": "10:00", "close": "22:00" }],
+    "sun": [{ "open": "09:00", "close": "21:00" }]
+  },
+
+  "categories": [
+    { "code": "SUPERCAR", "name": "Supercar" },
+    { "code": "LUXURY_SUV", "name": "Luxury SUV" },
+    { "code": "LUXURY_SALOON", "name": "Luxury saloon" }
+  ],
+
+  "vehicles": [
+    {
+      "category": "LUXURY_SUV",
+      "make": "Lamborghini",
+      "model": "Urus S",
+      "year": 2024,
+      "colour": "Nero",
+      "plate": "DXB-A-11111",
+      "dailyFils": 300000,
+      "weeklyFils": 1800000,
+      "monthlyFils": 6000000,
+      "depositFils": 1500000,
+      "includedKmPerDay": 250,
+      "extraKmFils": 1500,
+      "photos": []
+    }
+  ],
+
+  "agent": {
+    "displayName": "Sara",
+    "toneNotes": "Warm and brief. Never pushy. Answer the question first, then offer the next step.",
+    "extraInstructions": null
+  },
+
+  "followUps": {
+    "quietHoursFrom": "21:30",
+    "quietHoursTo": "08:30",
+    "chaseQuoteAfterHours": 24,
+    "chaseQuoteAttempts": 2,
+    "chaseAgainAfterHours": 48
+  },
+
+  "templates": [
+    {
+      "for": "QUOTE_NO_REPLY",
+      "metaTemplateName": "quote_follow_up",
+      "language": "en",
+      "placeholders": ["customerName", "vehicleName"],
+      "wordingInsideTheWindow": "Hi {{customerName}}, just checking you saw the {{vehicleName}} quote. Still want me to hold it?"
+    },
+    {
+      "for": "HOLD_EXPIRING",
+      "metaTemplateName": "hold_expiring",
+      "language": "en",
+      "placeholders": ["customerName", "vehicleName"],
+      "wordingInsideTheWindow": "{{customerName}}, the {{vehicleName}} is still held for you but not for much longer."
+    },
+    {
+      "for": "MISSED_CALL",
+      "metaTemplateName": "missed_call",
+      "language": "en",
+      "placeholders": ["businessName"],
+      "wordingInsideTheWindow": "Sorry we missed your call. This is {{businessName}}, what can we get you?"
+    }
+  ],
+
+  "kirmiTerms": {
+    "feeModel": "COMMISSION",
+    "monthlyRetainerFils": 0,
+    "commissionPercent": 10
+  },
+
+  "options": {
+    "smsFallback": false,
+    "sendVehiclePhotos": true
+  }
+}

@@ -141,8 +141,9 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
         <p class="sub" id="period">&nbsp;</p>
       </div>
       <div class="range">
+        <button type="button" data-month="1" class="on">This month</button>
         <button type="button" data-days="7">7 days</button>
-        <button type="button" data-days="30" class="on">30 days</button>
+        <button type="button" data-days="30">30 days</button>
         <button type="button" data-days="90">90 days</button>
       </div>
     </div>
@@ -223,7 +224,11 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
 <script>
 (function(){
   "use strict";
-  var KEY="kirmi.dash.key", apiKey=null, days=30, daily=[];
+  var KEY="kirmi.dash.key", apiKey=null, daily=[];
+  // Default to the calendar month, because that is the period the client is
+  // invoiced for. A rolling 30 day window always straddles two invoices, so a
+  // figure read off it never reconciles against the bill.
+  var range={ month:true }, timezone="UTC";
   var el=function(id){return document.getElementById(id);};
 
   function api(path){
@@ -235,19 +240,56 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
     });
   }
 
+  function inClientZone(iso){
+    return new Intl.DateTimeFormat("en-GB",{timeZone:timezone,day:"numeric",month:"short",year:"numeric"})
+      .format(new Date(iso));
+  }
+
   function money(n){ return new Intl.NumberFormat("en-AE",{maximumFractionDigits:0}).format(Math.round(n)); }
   function set(id,v){ el(id).textContent=v; }
 
+  /**
+   * The 00:00 instant on the 1st of the current month, in the CLIENT's
+   * timezone. In Dubai that is 20:00 UTC on the last day of the previous
+   * month, and using plain UTC would put the last four hours of the month
+   * into the wrong invoice.
+   */
+  function startOfMonth(){
+    var now=new Date();
+    var d=new Intl.DateTimeFormat("en-CA",{timeZone:timezone,year:"numeric",month:"2-digit"}).formatToParts(now);
+    var y=d.find(function(p){return p.type==="year";}).value;
+    var m=d.find(function(p){return p.type==="month";}).value;
+    var asUtc=new Date(y+"-"+m+"-01T00:00:00Z");
+    return new Date(asUtc.getTime()-zoneOffsetMs(asUtc));
+  }
+  function zoneOffsetMs(at){
+    var f=new Intl.DateTimeFormat("en-US",{timeZone:timezone,hour12:false,year:"numeric",month:"2-digit",
+      day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    var p={}; f.formatToParts(at).forEach(function(x){ p[x.type]=x.value; });
+    var asIfUtc=Date.UTC(p.year,Number(p.month)-1,p.day,p.hour==="24"?0:Number(p.hour),p.minute,p.second);
+    return asIfUtc-at.getTime();
+  }
+
+  function query(){
+    if(range.month){
+      return "from="+encodeURIComponent(startOfMonth().toISOString())+
+             "&to="+encodeURIComponent(new Date().toISOString());
+    }
+    return "days="+range.days;
+  }
+
   function load(){
+    var q=query();
     return Promise.all([
-      api("/api/metrics/summary?days="+days),
-      api("/api/metrics/daily?days="+days),
-      api("/api/attribution/report?days="+days)
+      api("/api/metrics/summary?"+q),
+      api("/api/metrics/daily?"+q),
+      api("/api/attribution/report?"+q)
     ]).then(function(r){ render(r[0],r[1],r[2]); });
   }
 
   function render(sum,day,rep){
     var c=sum.channels, cur=sum.currency||"AED";
+    if(sum.timezone) timezone=sum.timezone;
     set("cur1",cur);
     set("enq", c.enquiriesReceived.value);
     set("book", c.bookingsSecured.value);
@@ -256,7 +298,11 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
     // headline that disagrees with the table underneath it is how an invoice
     // conversation starts badly.
     set("rev", money(rep.totals.rentalValue.major));
-    set("period", new Date(sum.window.from).toLocaleDateString()+" to "+new Date(sum.window.to).toLocaleDateString());
+    // Rendered in the CLIENT's timezone, not the viewer's. The 1st of the
+    // month in Dubai is the 31st in UTC, and a period labelled "since the 1st"
+    // that shows the 31st looks like a bug even when the query is right.
+    set("period", (range.month ? "Since the 1st, " : "") +
+      inClientZone(sum.window.from)+" to "+inClientZone(sum.window.to));
 
     var conv=sum.context?sum.context.conversionRatePercent:0;
     set("enqNote", conv+"% of them turned into a booking");
@@ -290,7 +336,7 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
       shown.forEach(function(b){
         var tr=document.createElement("tr");
         tr.appendChild(cell(b.vehicle,"car",b.plateNumber));
-        tr.appendChild(cell(new Date(b.startAt).toLocaleDateString()));
+        tr.appendChild(cell(inClientZone(b.startAt)));
         tr.appendChild(cell(String(b.durationDays),"num"));
         tr.appendChild(cell(cur+" "+money(b.rentalValue.major),"num"));
         tr.appendChild(cell(b.status==="HOLD"?"Awaiting payment":b.status.charAt(0)+b.status.slice(1).toLowerCase()));
@@ -332,7 +378,15 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
   var L=46,R=884,T=16,B=206;
   function drawChart(){
     var svg=el("chart");
-    if(!daily.length){ svg.innerHTML=""; return; }
+    var ink0=getComputedStyle(document.documentElement).getPropertyValue("--faint").trim();
+    if(!daily.length){
+      // A client on day one has no activity. That is zero, not an error, and
+      // an empty frame reads as broken.
+      svg.innerHTML='<line x1="'+L+'" y1="'+B+'" x2="'+R+'" y2="'+B+'" stroke="'+ink0+'" stroke-width="1"/>'+
+        '<text x="'+((L+R)/2)+'" y="'+((T+B)/2)+'" text-anchor="middle" fill="'+ink0+'" '+
+        'font-family="Instrument Sans, sans-serif" font-size="13">Nothing yet in this period</text>';
+      return;
+    }
 
     var ink=getComputedStyle(document.documentElement).getPropertyValue("--faint").trim();
     var gridC=getComputedStyle(document.documentElement).getPropertyValue("--hair").trim();
@@ -396,7 +450,9 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
     b.addEventListener("click",function(){
       Array.prototype.forEach.call(document.querySelectorAll(".range button"),function(o){o.classList.remove("on");});
       b.classList.add("on");
-      days=Number(b.getAttribute("data-days"));
+      range = b.getAttribute("data-month")
+        ? { month:true }
+        : { month:false, days:Number(b.getAttribute("data-days")) };
       load();
     });
   });
@@ -404,6 +460,7 @@ tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);backg
   function signIn(k){
     apiKey=k;
     return api("/api/metrics/summary?days=30").then(function(d){
+      if(d.timezone) timezone=d.timezone;
       try{ localStorage.setItem(KEY,k); }catch(e){}
       el("gate").style.display="none";
       el("app").classList.add("on");

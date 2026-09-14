@@ -51,6 +51,10 @@ export function metricsRoutes(container: Container): Router {
       res.json({
         window: snapshot.window,
         currency: snapshot.currency,
+        // So the client's own results page can title itself without a second
+        // call just to learn whose data it is showing.
+        tradingName: tenant.tradingName,
+        timezone: tenant.timezone,
         channels: {
           enquiriesReceived: { value: snapshot.enquiriesReceived, label: "Enquiries received" },
           bookingsSecured: { value: snapshot.bookingsSecured, label: "Bookings secured" },
@@ -68,6 +72,18 @@ export function metricsRoutes(container: Container): Router {
             retainerMinor: snapshot.kirmiFee.retainerMinor,
             feeModel: snapshot.kirmiFee.feeModel,
             label: "Kirmi fee generated",
+          },
+        },
+        // The two figures that answer "what are we paying you for". A client
+        // reading "13 bookings" assumes they would have had those anyway;
+        // these say which ones nobody was going to answer at all.
+        attributableToUs: {
+          outOfHoursEnquiries: snapshot.attributableToUs.outOfHoursEnquiries,
+          outOfHoursSharePercent: snapshot.attributableToUs.outOfHoursSharePercent,
+          bookingsRecoveredByFollowUp: snapshot.attributableToUs.bookingsRecoveredByFollowUp,
+          recoveredRevenue: {
+            minor: snapshot.attributableToUs.recoveredRevenueMinor,
+            major: toMajor(snapshot.attributableToUs.recoveredRevenueMinor),
           },
         },
         context: snapshot.context,

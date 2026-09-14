@@ -1,6 +1,7 @@
 import { applyBasisPoints, type Minor } from "../core/money.js";
 import type { TenantProfile } from "../core/types.js";
 import type { TenantDatabase } from "../db/tenant-context.js";
+import { isWithinOpeningHours } from "../core/time.js";
 
 /**
  * ===========================================================================
@@ -48,6 +49,24 @@ export interface MetricsSnapshot {
     retainerMinor: Minor;
     totalMinor: Minor;
     feeModel: TenantProfile["billing"]["feeModel"];
+  };
+
+  /**
+   * The two numbers that answer "what are we actually paying for".
+   *
+   * A client looking at "13 bookings" thinks they would have got those anyway.
+   * These say otherwise, and they are the whole renewal argument:
+   *
+   *   outOfHours  - enquiries that arrived when the desk was shut. Nobody at
+   *                 the client was going to answer these at all.
+   *   recovered   - bookings that only happened because the customer went
+   *                 quiet and was chased. Dead, then not dead.
+   */
+  attributableToUs: {
+    outOfHoursEnquiries: number;
+    outOfHoursSharePercent: number;
+    bookingsRecoveredByFollowUp: number;
+    recoveredRevenueMinor: Minor;
   };
 
   /** Context the four headline numbers need to mean anything. */
@@ -105,6 +124,8 @@ export class MetricsService {
       const retainerMinor = this.retainerForWindow(tenant, window);
 
       const latency = await this.replyLatency(tx, window);
+      const outOfHours = await this.outOfHours(tx, tenant, window);
+      const recovered = await this.recoveredByFollowUp(tx, window);
 
       return {
         window: { from: window.from.toISOString(), to: window.to.toISOString() },
@@ -124,6 +145,14 @@ export class MetricsService {
           retainerMinor,
           totalMinor: commissionMinor + retainerMinor,
           feeModel: tenant.billing.feeModel,
+        },
+
+        attributableToUs: {
+          outOfHoursEnquiries: outOfHours,
+          outOfHoursSharePercent:
+            enquiriesReceived === 0 ? 0 : Math.round((outOfHours / enquiriesReceived) * 1000) / 10,
+          bookingsRecoveredByFollowUp: recovered.count,
+          recoveredRevenueMinor: recovered.revenueMinor,
         },
 
         context: {
@@ -176,6 +205,61 @@ export class MetricsService {
    * enough to hide a fleet that is otherwise answering in two seconds, and the
    * promise made to the client is about the typical reply.
    */
+  /**
+   * Enquiries that arrived while the client's desk was shut.
+   *
+   * Evaluated in JavaScript against the client's own opening hours rather than
+   * in SQL, because opening hours are per weekday, can have several windows in
+   * a day, and carry dated exceptions for public holidays. Expressing that as a
+   * query would be clever and wrong at the edges; the row count here is small
+   * enough that correctness is worth more than one fewer round trip.
+   *
+   * Timestamps are compared in the CLIENT's timezone. A 02:00 Dubai enquiry is
+   * the previous evening in UTC, and getting that wrong would move roughly a
+   * fifth of the week's out-of-hours enquiries into working hours, which is
+   * exactly the figure the client is being asked to trust.
+   */
+  private async outOfHours(
+    tx: Parameters<Parameters<TenantDatabase["withTenant"]>[1]>[0],
+    tenant: TenantProfile,
+    window: MetricsWindow,
+  ): Promise<number> {
+    const rows = await tx.platformAuditLog.findMany({
+      where: { eventType: "ENQUIRY_RECEIVED", occurredAt: { gte: window.from, lte: window.to } },
+      select: { occurredAt: true },
+    });
+
+    return rows.filter((row) => !isWithinOpeningHours(row.occurredAt, tenant.openingHours, tenant.timezone)).length;
+  }
+
+  /**
+   * Bookings that exist only because somebody was chased.
+   *
+   * A booking counts as recovered when a follow up was actually SENT on that
+   * conversation before the reservation was created. Scheduled but never sent
+   * does not count, and neither does a follow up sent after the booking, which
+   * would be a different message entirely.
+   */
+  private async recoveredByFollowUp(
+    tx: Parameters<Parameters<TenantDatabase["withTenant"]>[1]>[0],
+    window: MetricsWindow,
+  ): Promise<{ count: number; revenueMinor: Minor }> {
+    const rows = await tx.$queryRaw<Array<{ count: bigint; revenue: bigint | null }>>`
+      SELECT count(*) AS count, sum(r.total_minor - r.vat_minor) AS revenue
+      FROM reservations r
+      WHERE r.created_at >= ${window.from} AND r.created_at <= ${window.to}
+        AND r.status IN ('HOLD', 'CONFIRMED', 'COMPLETED')
+        AND EXISTS (
+          SELECT 1 FROM follow_ups f
+          WHERE f.conversation_id = r.conversation_id
+            AND f.status = 'SENT'
+            AND f.sent_at < r.created_at
+        )
+    `;
+    const row = rows[0];
+    return { count: Number(row?.count ?? 0), revenueMinor: Number(row?.revenue ?? 0) };
+  }
+
   private async replyLatency(
     tx: Parameters<Parameters<TenantDatabase["withTenant"]>[1]>[0],
     window: MetricsWindow,

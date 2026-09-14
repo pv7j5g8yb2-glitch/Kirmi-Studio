@@ -75,6 +75,20 @@ export function createApp(container: Container): Express {
     }),
   );
 
+  // The client's own results page, same origin and same static directory.
+  app.use(
+    "/dashboard",
+    express.static(inboxAssetPath(), {
+      index: "dashboard.html",
+      extensions: ["html"],
+      maxAge: "5m",
+      setHeaders: (res) => {
+        res.setHeader("X-Frame-Options", "DENY");
+        res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      },
+    }),
+  );
+
   app.use(buildRoutes(container));
 
   app.use(notFoundHandler());

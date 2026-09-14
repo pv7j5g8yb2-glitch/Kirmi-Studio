@@ -222,3 +222,33 @@ Without the webhook secret no payment is ever confirmed, and every booking
 expires. `npm run doctor` will not catch this, because the credential belongs
 to the client rather than the platform. Test it with Stripe's own "send test
 webhook" button before go-live.
+
+## The client's results page
+
+Served at `/dashboard` by the same process, alongside `/inbox`. Sign in with a
+client API key carrying `metrics:read`.
+
+Four headline figures, then the two that answer the question a client actually
+asks at renewal:
+
+| Figure | Where it comes from |
+|---|---|
+| Enquiries handled | `ENQUIRY_RECEIVED` ledger events |
+| Bookings | `BOOKING_SECURED` ledger events |
+| Revenue booked | Attribution report, **rental value before VAT** |
+| Average reply | Median `latency_ms` on outbound messages |
+| **Out of hours** | Enquiries outside the client's own opening hours, in their timezone |
+| **Recovered by follow up** | Bookings where a follow up was SENT before the reservation was created |
+
+The last two exist because a client reading "13 bookings" assumes they would
+have had those anyway. Out-of-hours says nobody there was going to answer at
+all, and recovered says the customer had gone quiet and was brought back.
+Those two numbers are the renewal argument.
+
+### One definition of revenue
+
+The headline, the table total and the commission all use **rental value
+excluding VAT**, which is the basis the contract charges on. An earlier version
+showed the VAT-inclusive figure in the headline and the ex-VAT figure in the
+table below it; they differed by exactly the VAT, and the first thing a client
+does is add up the table. Keep them the same.

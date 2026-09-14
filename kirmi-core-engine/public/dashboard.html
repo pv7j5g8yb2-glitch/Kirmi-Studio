@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#FBF9F5; --card:#FFFFFF; --ink:#141519; --body:#36342F; --mute:#6D675E; --faint:#9A9287;
+  --rule:#E5DFD5; --hair:#F0EBE2;
+  --brass:#8A6F11; --gleam:#C9A227;
+  --s1:#0069A8; --s2:#8F7310;
+  --good:#1C6440; --good-bg:#E9F1EC;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --text:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#111113; --card:#1A1A1C; --ink:#F2EFE8; --body:#C6C1B7; --mute:#8B857A; --faint:#6A655D;
+    --rule:#2C2B28; --hair:#232320;
+    --brass:#CFA82B; --gleam:#E0BD4E;
+    --s1:#3796CC; --s2:#B08E24;
+    --good:#74C193; --good-bg:#16241C;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111113; --card:#1A1A1C; --ink:#F2EFE8; --body:#C6C1B7; --mute:#8B857A; --faint:#6A655D;
+  --rule:#2C2B28; --hair:#232320;
+  --brass:#CFA82B; --gleam:#E0BD4E;
+  --s1:#3796CC; --s2:#B08E24;
+  --good:#74C193; --good-bg:#16241C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--body);font-family:var(--text);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gleam);outline-offset:2px}
+
+.gate{display:grid;place-items:center;min-height:100vh;padding:20px}
+.gate .card{background:var(--card);border:1px solid var(--rule);padding:28px;max-width:400px;width:100%}
+.gate h1{font-family:var(--display);font-size:14px;letter-spacing:.24em;text-transform:uppercase;margin:0 0 6px;color:var(--ink)}
+.gate p{color:var(--mute);margin:0 0 18px;font-size:13.5px}
+.gate input{width:100%;background:var(--paper);border:1px solid var(--rule);padding:10px 12px;font-family:var(--mono);font-size:13px}
+.gate button{margin-top:12px;width:100%;background:var(--ink);color:var(--paper);border:0;padding:11px;font-weight:600;cursor:pointer}
+.gate .err{color:#8E2A1E;font-size:13px;margin-top:10px;min-height:1em}
+
+.app{display:none}
+.app.on{display:block}
+.band{background:#000;color:#fff;padding-block:15px;padding-inline:clamp(16px,5vw,34px);
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.band .mark{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.32em;text-transform:uppercase}
+.band .who{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#C9A227}
+
+.wrap{max-width:1000px;margin:0 auto;padding-block:clamp(22px,4vw,34px) 70px;padding-inline:clamp(16px,5vw,34px)}
+
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+h1.t{font-family:var(--display);font-weight:800;color:var(--ink);font-size:clamp(24px,5vw,34px);
+  line-height:1.05;letter-spacing:-.025em;text-transform:uppercase;margin:0 0 4px}
+.sub{color:var(--mute);font-size:14px;margin:0}
+.range{display:flex;gap:6px}
+.range button{background:var(--card);border:1px solid var(--rule);color:var(--mute);
+  padding:6px 13px;font-size:13px;cursor:pointer;font-family:var(--mono);letter-spacing:.03em}
+.range button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.tile{background:var(--card);padding:18px 20px}
+.tile .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.tile .v{font-family:var(--display);font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;
+  font-size:clamp(26px,4.5vw,34px);line-height:1.05;letter-spacing:-.03em;margin-top:7px}
+.tile .v .cur{font-size:.44em;color:var(--mute);letter-spacing:.04em;margin-right:.3em;vertical-align:.32em}
+.tile .n{font-size:12.5px;color:var(--mute);margin-top:5px}
+
+.lab{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);margin:32px 0 12px}
+
+.cover{border:1px solid var(--good);background:var(--good-bg);padding:18px 20px;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+.cover .c .v{font-family:var(--display);font-weight:800;color:var(--ink);font-size:24px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.cover .c .k{font-size:13.5px;color:var(--body);margin-top:3px}
+
+.panel{border:1px solid var(--rule);background:var(--card);padding:16px 18px 10px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px;color:var(--mute)}
+.legend i{width:11px;height:3px;display:inline-block;border-radius:2px;margin-right:7px;vertical-align:3px}
+.chart{position:relative}
+.chart svg{width:100%;height:auto;display:block}
+.tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-112%);background:var(--ink);color:var(--paper);
+  padding:7px 10px;font-family:var(--mono);font-size:11px;line-height:1.6;white-space:nowrap;z-index:4;border-radius:2px}
+.tip.on{opacity:1}
+
+.tbl{overflow-x:auto;border:1px solid var(--rule);background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 14px;font-size:13.5px;border-bottom:1px solid var(--hair);white-space:nowrap}
+thead th{font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--mute);font-weight:500}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right}
+td.car{white-space:normal;color:var(--ink);font-weight:600}
+.plate{font-family:var(--mono);font-size:11px;color:var(--faint);display:block;font-weight:400}
+tfoot td{font-weight:700;color:var(--ink);border-top:2px solid var(--rule);background:var(--paper)}
+.empty{padding:34px 20px;text-align:center;color:var(--faint);font-size:14px}
+
+.fee{margin-top:12px;border:1px solid var(--rule);background:var(--card);padding:14px 18px;
+  display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+.fee .k{font-size:13.5px;color:var(--mute)}
+.fee .v{font-family:var(--display);font-weight:800;color:var(--ink);font-size:20px;font-variant-numeric:tabular-nums}
+
+.foot{margin-top:38px;padding-top:14px;border-top:1px solid var(--rule);font-family:var(--mono);
+  font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.foot button{background:none;border:0;color:var(--faint);cursor:pointer;font:inherit;text-transform:uppercase;padding:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="card">
+    <h1>Results</h1>
+    <p>Paste your access key. It stays in this browser and goes nowhere except this server.</p>
+    <input id="key" type="password" placeholder="kirmi_..." autocomplete="off" spellcheck="false">
+    <button id="enter" type="button">Open</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="band">
+    <span class="mark">Kirmi Studio</span>
+    <span class="who" id="clientName">&nbsp;</span>
+  </div>
+
+  <div class="wrap">
+    <div class="head">
+      <div>
+        <h1 class="t">Results</h1>
+        <p class="sub" id="period">&nbsp;</p>
+      </div>
+      <div class="range">
+        <button type="button" data-days="7">7 days</button>
+        <button type="button" data-days="30" class="on">30 days</button>
+        <button type="button" data-days="90">90 days</button>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <div class="k">Enquiries handled</div>
+        <div class="v" id="enq">&mdash;</div>
+        <div class="n" id="enqNote">&nbsp;</div>
+      </div>
+      <div class="tile">
+        <div class="k">Bookings</div>
+        <div class="v" id="book">&mdash;</div>
+        <div class="n" id="bookNote">&nbsp;</div>
+      </div>
+      <div class="tile">
+        <div class="k">Revenue booked</div>
+        <div class="v"><span class="cur" id="cur1">AED</span><span id="rev">&mdash;</span></div>
+        <div class="n" id="revNote">&nbsp;</div>
+      </div>
+      <div class="tile">
+        <div class="k">Average reply</div>
+        <div class="v" id="reply">&mdash;</div>
+        <div class="n">From the customer's message to ours</div>
+      </div>
+    </div>
+
+    <div class="lab">What we covered that nobody else would have</div>
+    <div class="cover">
+      <div class="c">
+        <div class="v" id="ooh">&mdash;</div>
+        <div class="k" id="oohNote">enquiries arrived while your desk was closed</div>
+      </div>
+      <div class="c">
+        <div class="v" id="rec">&mdash;</div>
+        <div class="k" id="recNote">bookings came back after we followed up</div>
+      </div>
+    </div>
+
+    <div class="lab">Day by day</div>
+    <div class="panel">
+      <div class="legend">
+        <span><i style="background:var(--s1)"></i>Enquiries handled</span>
+        <span><i style="background:var(--s2)"></i>Bookings</span>
+      </div>
+      <div class="chart" id="chartWrap">
+        <svg id="chart" viewBox="0 0 900 250" role="img" aria-label="Enquiries and bookings by day"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+    </div>
+
+    <div class="lab">Every booking, and what it was worth</div>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr>
+            <th>Vehicle</th><th>Collected</th><th class="num">Days</th>
+            <th class="num">Rental value</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="foot"></tfoot>
+      </table>
+    </div>
+
+    <div class="fee">
+      <span class="k" id="feeLabel">Our share of the above</span>
+      <span class="v"><span id="fee">&mdash;</span></span>
+    </div>
+
+    <div class="foot">
+      <span>Figures come from the live system, not a report anyone typed</span>
+      <button type="button" id="signout">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY="kirmi.dash.key", apiKey=null, days=30, daily=[];
+  var el=function(id){return document.getElementById(id);};
+
+  function api(path){
+    return fetch(path,{headers:{"x-api-key":apiKey}}).then(function(r){
+      return r.json().catch(function(){return {};}).then(function(d){
+        if(!r.ok) throw Object.assign(new Error("failed"),{status:r.status});
+        return d;
+      });
+    });
+  }
+
+  function money(n){ return new Intl.NumberFormat("en-AE",{maximumFractionDigits:0}).format(Math.round(n)); }
+  function set(id,v){ el(id).textContent=v; }
+
+  function load(){
+    return Promise.all([
+      api("/api/metrics/summary?days="+days),
+      api("/api/metrics/daily?days="+days),
+      api("/api/attribution/report?days="+days)
+    ]).then(function(r){ render(r[0],r[1],r[2]); });
+  }
+
+  function render(sum,day,rep){
+    var c=sum.channels, cur=sum.currency||"AED";
+    set("cur1",cur);
+    set("enq", c.enquiriesReceived.value);
+    set("book", c.bookingsSecured.value);
+    // Rental value excluding VAT, the same basis the table totals and the
+    // commission use. The gross figure differs by exactly the VAT, and a
+    // headline that disagrees with the table underneath it is how an invoice
+    // conversation starts badly.
+    set("rev", money(rep.totals.rentalValue.major));
+    set("period", new Date(sum.window.from).toLocaleDateString()+" to "+new Date(sum.window.to).toLocaleDateString());
+
+    var conv=sum.context?sum.context.conversionRatePercent:0;
+    set("enqNote", conv+"% of them turned into a booking");
+    var avg=sum.context?sum.context.averageBookingValueMinor/100:0;
+    set("bookNote", avg>0 ? ("Average "+cur+" "+money(avg)) : " ");
+    set("revNote","Rental value, before VAT and deposits");
+
+    var ms=sum.context?sum.context.medianReplyMs:null;
+    set("reply", ms===null||ms===undefined ? "—" : (ms<1000 ? ms+"ms" : (ms/1000).toFixed(1)+"s"));
+
+    var a=sum.attributableToUs||{};
+    set("ooh", a.outOfHoursEnquiries!=null?a.outOfHoursEnquiries:"—");
+    set("oohNote","enquiries arrived while your desk was closed"+
+      (a.outOfHoursSharePercent?" ("+a.outOfHoursSharePercent+"% of all of them)":""));
+    set("rec", a.bookingsRecoveredByFollowUp!=null?a.bookingsRecoveredByFollowUp:"—");
+    set("recNote","bookings came back after we followed up"+
+      (a.recoveredRevenue&&a.recoveredRevenue.major?", worth "+cur+" "+money(a.recoveredRevenue.major):""));
+
+    daily=day.points||day.daily||[];
+    drawChart();
+
+    var rows=el("rows"); rows.textContent="";
+    var list=rep.bookings||[];
+    if(!list.length){
+      var tr=document.createElement("tr");
+      var td=document.createElement("td");
+      td.colSpan=5; td.className="empty"; td.textContent="No bookings in this period yet.";
+      tr.appendChild(td); rows.appendChild(tr);
+    } else {
+      var LIMIT=25, shown=list.slice(0,LIMIT);
+      shown.forEach(function(b){
+        var tr=document.createElement("tr");
+        tr.appendChild(cell(b.vehicle,"car",b.plateNumber));
+        tr.appendChild(cell(new Date(b.startAt).toLocaleDateString()));
+        tr.appendChild(cell(String(b.durationDays),"num"));
+        tr.appendChild(cell(cur+" "+money(b.rentalValue.major),"num"));
+        tr.appendChild(cell(b.status==="HOLD"?"Awaiting payment":b.status.charAt(0)+b.status.slice(1).toLowerCase()));
+        rows.appendChild(tr);
+      });
+      if(list.length>LIMIT){
+        var more=document.createElement("tr");
+        var mtd=document.createElement("td");
+        mtd.colSpan=5; mtd.className="empty";
+        mtd.textContent="Showing the most recent "+LIMIT+" of "+list.length+" bookings. The totals below cover all of them.";
+        more.appendChild(mtd); rows.appendChild(more);
+      }
+    }
+
+    var foot=el("foot"); foot.textContent="";
+    if(list.length){
+      var ftr=document.createElement("tr");
+      ftr.appendChild(cell(list.length+" bookings"));
+      ftr.appendChild(cell(""));
+      ftr.appendChild(cell(String(list.reduce(function(s,b){return s+b.durationDays;},0)),"num"));
+      ftr.appendChild(cell(cur+" "+money(rep.totals.rentalValue.major),"num"));
+      ftr.appendChild(cell(""));
+      foot.appendChild(ftr);
+    }
+
+    set("feeLabel","Our share, "+(rep.totals.commission.basisPoints/100)+"% of the rental value above");
+    set("fee", cur+" "+money(rep.totals.commission.major));
+  }
+
+  function cell(text,cls,sub){
+    var td=document.createElement("td");
+    if(cls) td.className=cls;
+    td.appendChild(document.createTextNode(text));
+    if(sub){ var s=document.createElement("span"); s.className="plate"; s.textContent=sub; td.appendChild(s); }
+    return td;
+  }
+
+  /* ---- chart: two series, one shared scale ------------------------------ */
+  var L=46,R=884,T=16,B=206;
+  function drawChart(){
+    var svg=el("chart");
+    if(!daily.length){ svg.innerHTML=""; return; }
+
+    var ink=getComputedStyle(document.documentElement).getPropertyValue("--faint").trim();
+    var gridC=getComputedStyle(document.documentElement).getPropertyValue("--hair").trim();
+
+    // One axis for both series. Bookings are always a subset of enquiries, so
+    // they share a scale honestly and a second y-axis would only mislead.
+    var hi=Math.max(1,Math.max.apply(null,daily.map(function(d){return d.enquiries;})));
+    hi=Math.ceil(hi*1.15);
+    var x=function(i){ return daily.length===1?(L+R)/2:L+(i/(daily.length-1))*(R-L); };
+    var y=function(v){ return B-(v/hi)*(B-T); };
+
+    var s="";
+    for(var g=0;g<=3;g++){
+      var gv=Math.round((hi/3)*g), gy=y(gv);
+      s+='<line x1="'+L+'" y1="'+gy.toFixed(1)+'" x2="'+R+'" y2="'+gy.toFixed(1)+'" stroke="'+gridC+'" stroke-width="1"/>'+
+         '<text x="'+(L-10)+'" y="'+(gy+4).toFixed(1)+'" text-anchor="end" fill="'+ink+'" font-family="IBM Plex Mono, monospace" font-size="10">'+gv+'</text>';
+    }
+
+    s+=line(daily.map(function(d){return d.enquiries;}),x,y,"var(--s1)");
+    s+=line(daily.map(function(d){return d.bookings;}),x,y,"var(--s2)");
+
+    // Label only the last point of each series, never every point.
+    var last=daily.length-1;
+    s+=dot(x(last),y(daily[last].enquiries),"var(--s1)")+dot(x(last),y(daily[last].bookings),"var(--s2)");
+
+    var step=Math.max(1,Math.ceil(daily.length/7));
+    daily.forEach(function(d,i){
+      if(i%step===0||i===last){
+        s+='<text x="'+x(i).toFixed(1)+'" y="'+(B+20)+'" text-anchor="middle" fill="'+ink+'" font-family="IBM Plex Mono, monospace" font-size="10">'+
+           d.date.slice(5)+'</text>';
+      }
+      s+='<rect class="hit" data-i="'+i+'" x="'+(x(i)-(R-L)/(2*Math.max(1,daily.length-1)))+'" y="'+T+'" width="'+((R-L)/Math.max(1,daily.length-1))+'" height="'+(B-T)+'" fill="transparent"/>';
+    });
+
+    svg.innerHTML=s;
+  }
+
+  function line(vals,x,y,colour){
+    var d=vals.map(function(v,i){ return (i?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1); }).join(" ");
+    return '<path d="'+d+'" fill="none" stroke="'+colour+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  }
+  function dot(cx,cy,colour){
+    return '<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="4.5" fill="'+colour+'" stroke="var(--card)" stroke-width="2"/>';
+  }
+
+  var wrap=el("chartWrap"), tip=el("tip");
+  wrap.addEventListener("mousemove",function(ev){
+    var t=ev.target;
+    if(!t||!t.classList||!t.classList.contains("hit")){ tip.classList.remove("on"); return; }
+    var d=daily[Number(t.getAttribute("data-i"))];
+    if(!d) return;
+    var box=wrap.getBoundingClientRect();
+    tip.innerHTML=d.date+"<br>"+d.enquiries+" enquiries<br>"+d.bookings+" booked";
+    tip.style.left=(ev.clientX-box.left)+"px";
+    tip.style.top=(ev.clientY-box.top)+"px";
+    tip.classList.add("on");
+  });
+  wrap.addEventListener("mouseleave",function(){ tip.classList.remove("on"); });
+
+  Array.prototype.forEach.call(document.querySelectorAll(".range button"),function(b){
+    b.addEventListener("click",function(){
+      Array.prototype.forEach.call(document.querySelectorAll(".range button"),function(o){o.classList.remove("on");});
+      b.classList.add("on");
+      days=Number(b.getAttribute("data-days"));
+      load();
+    });
+  });
+
+  function signIn(k){
+    apiKey=k;
+    return api("/api/metrics/summary?days=30").then(function(d){
+      try{ localStorage.setItem(KEY,k); }catch(e){}
+      el("gate").style.display="none";
+      el("app").classList.add("on");
+      set("clientName", d.tradingName || "");
+      return load();
+    });
+  }
+  function signOut(msg){
+    apiKey=null;
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    el("app").classList.remove("on");
+    el("gate").style.display="grid";
+    el("gateErr").textContent=msg||"";
+  }
+
+  el("enter").addEventListener("click",function(){
+    var v=el("key").value.trim(); if(!v) return;
+    el("gateErr").textContent="";
+    signIn(v).catch(function(){ el("gateErr").textContent="That key was not accepted."; });
+  });
+  el("key").addEventListener("keydown",function(e){ if(e.key==="Enter") el("enter").click(); });
+  el("signout").addEventListener("click",function(){ signOut(""); });
+
+  var stored=null; try{ stored=localStorage.getItem(KEY); }catch(e){}
+  if(stored) signIn(stored).catch(function(){ signOut(""); });
+})();
+</script>
+</body>
+</html>

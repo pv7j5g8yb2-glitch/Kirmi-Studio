@@ -3,6 +3,7 @@ import { buildContainer } from "../../core/container.js";
 import { logger } from "../../core/logger.js";
 import { disconnectPrisma } from "../../db/prisma.js";
 import { closeQueues } from "../queues.js";
+import { createFollowUpWorker } from "./follow-up.worker.js";
 import { createHoldSweeperWorker } from "./hold-sweeper.worker.js";
 import { createOutboundDeliveryWorker } from "./outbound-delivery.worker.js";
 import { createWebhookIngestWorker } from "./webhook-ingest.worker.js";
@@ -26,6 +27,7 @@ async function main(): Promise<void> {
     createWebhookIngestWorker(container),
     createOutboundDeliveryWorker(container),
     createHoldSweeperWorker(container),
+    createFollowUpWorker(container),
   ];
 
   for (const worker of workers) {

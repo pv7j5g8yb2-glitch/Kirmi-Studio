@@ -5,7 +5,9 @@ import { AiDisabledError, NotFoundError, VehicleContendedError, VehicleUnavailab
 import type { Logger } from "../core/logger.js";
 import { evaluateQualification, minimumAgeFor } from "../core/qualification.js";
 import type { TenantProfile } from "../core/types.js";
-import type { TenantDatabase } from "../db/tenant-context.js";
+import type { TenantDatabase, TenantTx } from "../db/tenant-context.js";
+import { providerFor } from "../payments/registry.js";
+import type { ClientConfigService } from "../services/client-config.service.js";
 import type { CustomerService } from "../services/customer.service.js";
 import type { QuoteService } from "../services/quote.service.js";
 import type { ReservationService } from "../services/reservation.service.js";
@@ -47,6 +49,11 @@ const availabilityInput = z.object({
   addOnCodes: z.array(z.string().max(64)).max(10).optional(),
 });
 
+const sendPhotosInput = z.object({
+  vehicleId: z.string().uuid("vehicleId must be an id returned by SEARCH_VEHICLES"),
+  caption: z.string().max(200).optional(),
+});
+
 const holdInput = z.object({
   quoteId: z.string().uuid(),
   confirmedByCustomer: z.boolean(),
@@ -61,6 +68,8 @@ export interface ToolContext {
 export interface ToolOutcome {
   content: string;
   isError: boolean;
+  /** Photographs the pipeline should attach to the reply it is about to send. */
+  media?: Array<{ url: string; kind: "image"; caption?: string }>;
   /** Set when the tool decided a human must take this conversation over. */
   escalation?: { reason: "AGE_BELOW_MINIMUM" | "CUSTOM_RATE_REQUEST" | "INVENTORY_CONFLICT"; summary: string };
   /** Ids the pipeline records against the conversation. */
@@ -76,6 +85,7 @@ export class ToolExecutor {
     private readonly reservations: ReservationService,
     private readonly customers: CustomerService,
     private readonly log: Logger,
+    private readonly config: ClientConfigService,
   ) {}
 
   async execute(name: string, input: Record<string, unknown>, context: ToolContext): Promise<ToolOutcome> {
@@ -87,6 +97,8 @@ export class ToolExecutor {
           return await this.checkAvailability(input, context);
         case "CREATE_HOLD":
           return await this.createHold(input, context);
+        case "SEND_VEHICLE_PHOTOS":
+          return await this.sendVehiclePhotos(input, context);
         default:
           return { content: `No such tool: ${name}`, isError: true };
       }
@@ -248,6 +260,122 @@ export class ToolExecutor {
     };
   }
 
+  /**
+   * Send the client's own photographs of a car.
+   *
+   * The URLs come from the vehicle row and nowhere else. The model names a
+   * vehicle id and receives confirmation that pictures are on their way; it
+   * never sees a URL and so cannot invent one, which is the same boundary that
+   * keeps it away from prices.
+   *
+   * A car with no photographs on file is a plain "no", not an apology and not
+   * an offer to describe it instead. Describing a car the customer asked to
+   * see is worse than saying there are no pictures.
+   */
+  private async sendVehiclePhotos(raw: Record<string, unknown>, context: ToolContext): Promise<ToolOutcome> {
+    const input = sendPhotosInput.parse(raw);
+
+    if (!context.tenant.proactive.vehiclePhotosEnabled) {
+      return {
+        content: "This client does not send vehicle photographs. Offer to describe the car in a sentence instead.",
+        isError: false,
+      };
+    }
+
+    const vehicle = await this.db.withTenant(context.tenant.clientId, async (tx: TenantTx) =>
+      tx.vehicle.findFirst({
+        where: { id: input.vehicleId, clientId: context.tenant.clientId, active: true },
+        select: { make: true, model: true, year: true, colour: true, imageUrls: true },
+      }),
+    );
+
+    if (!vehicle) {
+      return { content: "No such vehicle in this fleet. Do not guess, use SEARCH_VEHICLES again.", isError: true };
+    }
+    if (vehicle.imageUrls.length === 0) {
+      return {
+        content: JSON.stringify({
+          sent: 0,
+          note: "There are no photographs on file for this car. Say so plainly. Do not describe it as if you had seen it.",
+        }),
+        isError: false,
+      };
+    }
+
+    // Four is the practical ceiling: enough to show a car properly, few enough
+    // that a customer on a slow connection is not waiting on a wall of images.
+    const urls = vehicle.imageUrls.slice(0, 4);
+    const caption = input.caption?.trim() || `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+
+    return {
+      isError: false,
+      media: urls.map((url: string, index: number) => ({
+        url,
+        kind: "image" as const,
+        ...(index === 0 ? { caption } : {}),
+      })),
+      content: JSON.stringify({
+        sent: urls.length,
+        vehicle: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+        note:
+          "The photographs are being sent with your reply. Say one short line, such as offering to hold the car, " +
+          "and do not describe what is in the pictures.",
+      }),
+    };
+  }
+
+  /**
+   * Turn a hold into something the customer can pay.
+   *
+   * Deliberately forgiving: a gateway that is down, misconfigured or simply
+   * absent must not cost the booking. The hold already exists and the car is
+   * already off the market, so the worst acceptable outcome is "pay when you
+   * collect", which still converts. Failing the tool call here would throw
+   * away a customer who had just said yes.
+   */
+  private async issuePaymentLink(
+    tenant: TenantProfile,
+    reservation: { id: string; reference: string; totalMinor: number; currency: string },
+  ): Promise<{ url: string | null; instructions: string } | null> {
+    try {
+      const [secrets, accessKeys] = await Promise.all([
+        this.config.loadSecrets(tenant.clientId),
+        this.config.loadPaymentAccessKeys(tenant.clientId),
+      ]);
+      const provider = providerFor(tenant, secrets, accessKeys, this.log);
+
+      const link = await provider.createLink({
+        clientId: tenant.clientId,
+        reservationId: reservation.id,
+        description: `${tenant.tradingName} booking ${reservation.reference}`,
+        amountMinor: reservation.totalMinor,
+        currency: reservation.currency,
+        reference: reservation.reference,
+        customerName: null,
+      });
+
+      await this.db.withTenant(tenant.clientId, async (tx: TenantTx) => {
+        await tx.reservation.update({
+          where: { id: reservation.id },
+          data: {
+            paymentProvider: link.provider,
+            paymentUrl: link.url,
+            paymentReference: link.providerReference,
+            paymentLinkSentAt: new Date(),
+          },
+        });
+      });
+
+      return { url: link.url, instructions: link.instructions };
+    } catch (err) {
+      this.log.error(
+        { err, clientId: tenant.clientId, reservationId: reservation.id },
+        "could not issue a payment link, the hold stands and settlement falls back to the desk",
+      );
+      return null;
+    }
+  }
+
   private async createHold(raw: Record<string, unknown>, context: ToolContext): Promise<ToolOutcome> {
     const parsed = holdInput.safeParse(raw);
     if (!parsed.success) return invalid(parsed.error.issues);
@@ -285,6 +413,12 @@ export class ToolExecutor {
 
       await this.quotes.markAccepted(tenant, quote.id);
 
+      // The link is issued here, by code, and handed to the model as a string
+      // it may repeat. It has no way to compose one itself, which is the point:
+      // a hallucinated payment URL sent to a customer in writing is the single
+      // worst thing this system could do.
+      const payment = await this.issuePaymentLink(tenant, reservation);
+
       return {
         reservationId: reservation.id,
         isError: false,
@@ -293,7 +427,12 @@ export class ToolExecutor {
           reference: reservation.reference,
           holdExpiresAt: reservation.holdExpiresAt?.toISOString(),
           total: formatMoney(reservation.totalMinor, reservation.currency),
-          note: "The car is held, NOT booked. Give the reference, say how long the hold lasts, and explain that payment confirms it.",
+          paymentUrl: payment?.url ?? null,
+          paymentInstructions: payment?.instructions ?? null,
+          note:
+            "The car is held, NOT booked. Give the reference and say how long the hold lasts. " +
+            "If there is a paymentUrl, send it exactly as written and do not shorten or retype it. " +
+            "If there is not, repeat paymentInstructions instead. Never invent a link.",
         }),
       };
     } catch (err) {

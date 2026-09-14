@@ -1,4 +1,5 @@
 import type { ChannelType } from "@prisma/client";
+import type { OutboundMedia, OutboundTemplate } from "../channels/types.js";
 import { env } from "../config/env.js";
 import type { ContextCache } from "../cache/conversation-context.cache.js";
 import { AiDisabledError } from "../core/errors.js";
@@ -10,6 +11,7 @@ import type { AuditService } from "../services/audit.service.js";
 import type { ConversationService } from "../services/conversation.service.js";
 import type { CustomerService } from "../services/customer.service.js";
 import type { EscalationService } from "../services/escalation.service.js";
+import type { FollowUpService } from "../services/follow-up.service.js";
 import { buildSystemPrompt, type LlmClient, type LlmTurn } from "./llm.client.js";
 import { AGENT_TOOLS } from "./tools.schema.js";
 import type { ToolExecutor } from "./tool-executor.js";
@@ -66,6 +68,9 @@ export interface OutboundDispatcher {
     channel: ChannelType;
     to: string;
     body: string;
+    media?: OutboundMedia[];
+    template?: OutboundTemplate;
+    allowSmsFallback?: boolean;
   }): Promise<void>;
 }
 
@@ -89,6 +94,8 @@ export class MessagePipeline {
     private readonly audit: AuditService,
     private readonly dispatcher: OutboundDispatcher,
     private readonly log: Logger,
+    /** Optional so a test can run the pipeline without a chase scheduler. */
+    private readonly followUps?: FollowUpService,
   ) {}
 
   async handle(tenant: TenantProfile, inbound: InboundMessage): Promise<PipelineResult> {
@@ -142,6 +149,16 @@ export class MessagePipeline {
       },
     );
 
+    // The customer is talking to us right now, so every pending chase on this
+    // conversation is obsolete. Cancelling before anything else means a reply
+    // and a follow up can never cross in flight, which is the one failure that
+    // reads as spam to the customer and as incompetence to the client.
+    if (this.followUps) {
+      await this.followUps
+        .cancelFor(tenant.clientId, conversationId, "customer replied")
+        .catch((err: unknown) => this.log.error({ err, conversationId }, "could not cancel pending follow ups"));
+    }
+
     // --- 3. Stand down if a human has the thread ---------------------------
     const conversation = await this.db.withTenant(tenant.clientId, async (tx) =>
       this.conversations.get(tx, conversationId),
@@ -159,6 +176,7 @@ export class MessagePipeline {
 
     // --- 5. Tool execution -------------------------------------------------
     let pendingEscalation: { reason: "AGE_BELOW_MINIMUM" | "CUSTOM_RATE_REQUEST" | "INVENTORY_CONFLICT"; summary: string } | null = null;
+    const pendingMedia: OutboundMedia[] = [];
 
     if (response.toolCalls.length > 0) {
       const results: Array<{ toolCallId: string; content: string; isError?: boolean }> = [];
@@ -171,6 +189,10 @@ export class MessagePipeline {
         });
         results.push({ toolCallId: call.id, content: outcome.content, ...(outcome.isError ? { isError: true } : {}) });
         if (outcome.escalation) pendingEscalation = outcome.escalation;
+        // Photographs ride out with the reply the model is about to write, so
+        // the customer gets one message with pictures rather than a bare
+        // sentence followed by images arriving out of nowhere.
+        if (outcome.media?.length) pendingMedia.push(...outcome.media);
       }
 
       // A failed qualification stops the conversation here. The model is not
@@ -271,10 +293,20 @@ export class MessagePipeline {
         channel: inbound.channel,
         to: inbound.externalId,
         body: reply,
+        ...(pendingMedia.length > 0 ? { media: pendingMedia } : {}),
       });
     }
 
     await this.refreshCache(tenant, conversationId, customerId, inbound, reply);
+
+    // After the reply is away, so none of this counts against the SLA the
+    // customer experienced. A failure here must never fail the turn: a missing
+    // follow up costs one chase, a thrown error costs the whole conversation.
+    if (this.followUps) {
+      await this.scheduleNextChase(tenant, conversationId).catch((err: unknown) =>
+        this.log.error({ err, conversationId }, "could not schedule a follow up"),
+      );
+    }
 
     if (slaBreached) {
       this.log.warn({ conversationId, latencyMs, budgetMs: config.REPLY_SLA_MS }, "reply SLA breached");
@@ -284,6 +316,56 @@ export class MessagePipeline {
 
     this.log.debug({ conversationId, elapsedMs: elapsedMs(timer) }, "pipeline complete");
     return { status: "replied", conversationId, reply, latencyMs, slaBreached };
+  }
+
+  /**
+   * Decide what, if anything, to chase this conversation about.
+   *
+   * Driven by what the conversation actually produced rather than by what the
+   * model said: a quote row exists or it does not. The model cannot talk the
+   * engine into chasing somebody, and it cannot forget to.
+   */
+  private async scheduleNextChase(tenant: TenantProfile, conversationId: string): Promise<void> {
+    if (!this.followUps) return;
+
+    const state = await this.db.withTenant(tenant.clientId, async (tx) => {
+      const [quote, reservation] = await Promise.all([
+        tx.quote.findFirst({
+          where: { clientId: tenant.clientId, conversationId },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, createdAt: true },
+        }),
+        tx.reservation.findFirst({
+          where: { clientId: tenant.clientId, conversationId, status: "HOLD" },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, holdExpiresAt: true },
+        }),
+      ]);
+      return { quote, reservation };
+    });
+
+    // A live hold is the more urgent of the two: the car is off the market and
+    // the customer has minutes, not days. It supersedes a quote chase.
+    if (state.reservation?.holdExpiresAt) {
+      await this.followUps.schedule(tenant, {
+        clientId: tenant.clientId,
+        conversationId,
+        kind: "HOLD_EXPIRING",
+        from: state.reservation.holdExpiresAt,
+        reservationId: state.reservation.id,
+      });
+      return;
+    }
+
+    if (state.quote) {
+      await this.followUps.schedule(tenant, {
+        clientId: tenant.clientId,
+        conversationId,
+        kind: "QUOTE_NO_REPLY",
+        from: state.quote.createdAt,
+        quoteId: state.quote.id,
+      });
+    }
   }
 
   /**

@@ -8,7 +8,9 @@ import { AnthropicLlmClient, type LlmClient } from "../orchestrator/llm.client.j
 import { MessagePipeline, type OutboundDispatcher } from "../orchestrator/message.pipeline.js";
 import { ToolExecutor } from "../orchestrator/tool-executor.js";
 import { InboxGateway, NullBroadcaster } from "../realtime/websocket.gateway.js";
+import { AttributionService } from "../services/attribution.service.js";
 import { AuditService } from "../services/audit.service.js";
+import { FollowUpService } from "../services/follow-up.service.js";
 import { ClientConfigService } from "../services/client-config.service.js";
 import { ConversationService } from "../services/conversation.service.js";
 import { CustomerService } from "../services/customer.service.js";
@@ -55,6 +57,8 @@ export interface Container {
   quotes: QuoteService;
   reservations: ReservationService;
   escalations: EscalationService;
+  followUps: FollowUpService;
+  attribution: AttributionService;
   metrics: MetricsService;
   webhooks: WebhookService;
 
@@ -106,6 +110,8 @@ export function buildContainer(options: ContainerOptions = {}): Container {
   const quotes = new QuoteService(db, vehicles, audit);
   const reservations = new ReservationService(db, vehicles, audit, log);
   const escalations = new EscalationService(db, audit, broadcaster, log);
+  const followUps = new FollowUpService(db, log);
+  const attribution = new AttributionService(db, log);
   const metrics = new MetricsService(db);
   const webhooks = new WebhookService(db, audit);
 
@@ -113,9 +119,9 @@ export function buildContainer(options: ContainerOptions = {}): Container {
   const channels = new ChannelRegistry(config, log);
   const dispatcher = options.dispatcher ?? new QueueOutboundDispatcher();
   const llm = options.llm ?? new AnthropicLlmClient(log);
-  const tools = new ToolExecutor(db, vehicles, quotes, reservations, customers, log);
+  const tools = new ToolExecutor(db, vehicles, quotes, reservations, customers, log, config);
   const pipeline = new MessagePipeline(
-    db, customers, conversations, escalations, tools, llm, cache, audit, dispatcher, log,
+    db, customers, conversations, escalations, tools, llm, cache, audit, dispatcher, log, followUps,
   );
 
   return {
@@ -132,6 +138,8 @@ export function buildContainer(options: ContainerOptions = {}): Container {
     quotes,
     reservations,
     escalations,
+    followUps,
+    attribution,
     metrics,
     webhooks,
     channels,

@@ -172,10 +172,12 @@ say all three.
 
 Stated plainly, because a README that only lists strengths is not useful.
 
-- The payment step is modelled but not integrated. `Reservation` carries the
-  provider and reference fields, and `confirm()` records revenue and computes
-  Kirmi's fee, but no gateway is wired up. A hold becomes a booking when
-  something calls `confirm()`.
+- Payment links are issued by `src/payments`, with a Stripe Checkout provider
+  and a `manual` provider. Manual is not a placeholder: it is the correct
+  setting for a client with no gateway, and it lets a pilot go live without
+  waiting on somebody's finance department. Marking a booking paid still needs
+  `confirm()` to be called; there is no inbound Stripe webhook handler yet, so
+  settlement is confirmed by the desk rather than by the gateway.
 - Document verification is a flag on `Customer`, set by whatever process does
   the checking. There is no OCR or identity provider integration.
 - The LLM client speaks to the Anthropic Messages API over `fetch`. It has not
@@ -183,7 +185,14 @@ Stated plainly, because a README that only lists strengths is not useful.
   pipeline tests use a scripted model so they measure this engine's own latency
   rather than a provider's.
 - Telephony is inbound only. A missed call becomes a WhatsApp message, because
-  nobody wants a robot ringing them back.
+  nobody wants a robot ringing them back, and an SMS if that number turns out
+  not to be on WhatsApp.
+- WhatsApp templates are configured per client and must match what Meta
+  approved, name and language exactly. Nothing here can verify that: a mismatch
+  surfaces as a refused send, logged with both values.
+- The follow up sweeper is a worker on a queue, so something has to enqueue it
+  on a schedule. There is no cron in this repository; `operations.md` gives the
+  interval.
 - One advisory in `npm audit` is accepted: `deepmerge-ts`, reached only through
   the `prisma` CLI, which is a devDependency and is not installed in the runtime
   image (`npm ci --omit=dev`). The runtime `@prisma/client` has no dependencies

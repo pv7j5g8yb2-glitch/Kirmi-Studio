@@ -104,3 +104,83 @@ export const paymentAccessKeysSchema = z.object({
   depositCaptureBasisPoints: z.number().int().min(0).max(BASIS_POINTS_SCALE).default(BASIS_POINTS_SCALE),
 });
 export type PaymentAccessKeys = z.infer<typeof paymentAccessKeysSchema>;
+
+/**
+ * ===========================================================================
+ * PROACTIVE MESSAGING
+ * ===========================================================================
+ */
+
+export const FOLLOW_UP_KINDS = ["QUOTE_NO_REPLY", "HOLD_EXPIRING", "MISSED_CALL", "REACTIVATION"] as const;
+export type FollowUpKindCode = (typeof FOLLOW_UP_KINDS)[number];
+
+/**
+ * The placeholders a template may ask for.
+ *
+ * An enum rather than a free string, because a typo here does not fail at
+ * config load, it fails in a customer's chat: WhatsApp renders an unresolved
+ * parameter as an empty string, so `{{2}}` quietly becomes "Your  is still
+ * available". Naming the permitted set means a bad config is rejected at load
+ * with the client's name attached, which is the whole point of this file.
+ */
+export const TEMPLATE_PARAMS = [
+  "customerName",
+  "businessName",
+  "vehicleName",
+  "quoteTotal",
+  "reference",
+  "holdExpiry",
+  "startDate",
+] as const;
+export type TemplateParam = (typeof TEMPLATE_PARAMS)[number];
+
+/**
+ * One approved WhatsApp template.
+ *
+ * `name` and `language` must match what Meta approved exactly. There is no way
+ * to verify that from here, so a rejected send is logged with both, which is
+ * the fastest route to discovering that someone submitted `quote_followup` and
+ * configured `quote_follow_up`.
+ */
+export const messageTemplateSchema = z.object({
+  kind: z.enum(FOLLOW_UP_KINDS),
+  name: z.string().min(1),
+  language: z.string().min(2).default("en"),
+  /** In the order Meta's {{1}}, {{2}} placeholders appear in the approved body. */
+  bodyParams: z.array(z.enum(TEMPLATE_PARAMS)).default([]),
+  /** Fallback wording used when the service window is still open, where a plain
+   *  message reads far better than a template. */
+  freeFormBody: z.string().optional(),
+});
+export type MessageTemplate = z.infer<typeof messageTemplateSchema>;
+export const messageTemplatesSchema = z.array(messageTemplateSchema);
+
+/** When to chase, how often, and when to stop. */
+export const followUpRuleSchema = z.object({
+  kind: z.enum(FOLLOW_UP_KINDS),
+  enabled: z.boolean().default(true),
+  /** From the triggering event: the quote being sent, the call being missed. */
+  delayMinutes: z.number().int().min(1),
+  /** Chasing a third time is not persistence, it is harassment, and it is the
+   *  fastest way to have a client's number blocked by Meta for quality. */
+  maxAttempts: z.number().int().min(1).max(3).default(1),
+  /** Gap before the next attempt, when maxAttempts is above one. */
+  repeatAfterMinutes: z.number().int().min(30).optional(),
+});
+export type FollowUpRule = z.infer<typeof followUpRuleSchema>;
+
+/**
+ * Quiet hours apply to messages the engine starts, never to replies.
+ *
+ * Answering a customer at 03:18 is the product. Ringing their phone at 03:18
+ * to say a quote is still available is a complaint and a block. The sweeper
+ * defers a due follow up to the end of the quiet window rather than dropping it.
+ */
+export const followUpPolicySchema = z.object({
+  rules: z.array(followUpRuleSchema).default([]),
+  quietHours: z
+    .object({ from: timeOfDay, to: timeOfDay })
+    .nullable()
+    .default({ from: "21:30", to: "08:30" }),
+});
+export type FollowUpPolicy = z.infer<typeof followUpPolicySchema>;

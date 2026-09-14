@@ -43,10 +43,32 @@ export function tenantFixture(overrides: Partial<TenantProfile> = {}): TenantPro
     escalation: { targets: [], rules: {} },
     billing: { feeModel: "HYBRID", retainerMinor: 800_000, commissionBasisPoints: 500 },
     agent: { displayName: "Sara", toneNotes: null, systemPromptExtra: null },
+    proactive: {
+      templates: [
+        {
+          kind: "QUOTE_NO_REPLY",
+          name: "quote_follow_up",
+          language: "en",
+          bodyParams: ["customerName", "vehicleName"],
+          freeFormBody: "Just checking you saw the {{vehicleName}} quote. Still want me to hold it?",
+        },
+        { kind: "MISSED_CALL", name: "missed_call", language: "en", bodyParams: ["businessName"] },
+      ],
+      followUp: {
+        rules: [
+          { kind: "QUOTE_NO_REPLY", enabled: true, delayMinutes: 1_440, maxAttempts: 2, repeatAfterMinutes: 2_880 },
+          { kind: "MISSED_CALL", enabled: true, delayMinutes: 1, maxAttempts: 1 },
+        ],
+        quietHours: { from: "21:30", to: "08:30" },
+      },
+      smsFallbackEnabled: true,
+      vehiclePhotosEnabled: true,
+    },
     channels: {
       metaPhoneNumberId: "1234567890",
       metaBusinessAccountId: null,
       instagramScopedPageId: null,
+      twilioAccountSid: "ACtestsid",
       twilioNumber: "+97140000000",
     },
     ...overrides,

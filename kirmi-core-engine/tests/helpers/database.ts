@@ -126,6 +126,21 @@ export async function seedTenant(slug: string, options: { metaPhoneNumberId?: st
         commissionBasisPoints: 500,
         metaAppSecretEncrypted: encryptSecret(`${slug}-meta-secret`),
         metaVerifyToken: `${slug}-verify`,
+        messageTemplates: [
+          {
+            kind: "QUOTE_NO_REPLY",
+            name: "quote_follow_up",
+            language: "en",
+            bodyParams: ["customerName", "vehicleName"],
+            freeFormBody: "Hi {{customerName}}, still want the {{vehicleName}}?",
+          },
+        ],
+        followUpPolicy: {
+          rules: [{ kind: "QUOTE_NO_REPLY", enabled: true, delayMinutes: 1_440, maxAttempts: 2, repeatAfterMinutes: 2_880 }],
+          // Off in tests: quiet hours would make every assertion depend on what
+          // time of day the suite happened to run.
+          quietHours: null,
+        },
         ...(options.metaPhoneNumberId ? { metaPhoneNumberId: options.metaPhoneNumberId } : {}),
       },
     });

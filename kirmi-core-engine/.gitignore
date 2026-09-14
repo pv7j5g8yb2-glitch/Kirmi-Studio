@@ -4,3 +4,6 @@ dist/
 .env.local
 *.log
 coverage/
+
+# Local development environment. Holds a real encryption key.
+.env

@@ -4,6 +4,8 @@ import {
   categoryAgeOverridesSchema,
   escalationRulesSchema,
   escalationTargetsSchema,
+  followUpPolicySchema,
+  messageTemplatesSchema,
   openingHoursSchema,
   seasonalModifiersSchema,
 } from "../config/tenant-schema.js";
@@ -168,6 +170,21 @@ export class ClientConfigService {
   }
 
   /**
+   * The non secret half of the payment configuration: which provider, and how
+   * much to capture up front. The secret half comes back from loadSecrets, and
+   * the two stay apart so the provider choice can be read and logged freely.
+   */
+  async loadPaymentAccessKeys(clientId: string): Promise<{ provider?: string } | null> {
+    return this.db.withTenant(clientId, async (tx) => {
+      const config = await tx.clientConfiguration.findUnique({
+        where: { clientId },
+        select: { paymentAccessKeys: true },
+      });
+      return (config?.paymentAccessKeys as { provider?: string } | null) ?? null;
+    });
+  }
+
+  /**
    * A failed decryption is a configuration problem, not a reason to crash a
    * webhook. Returning null lets the caller fall back to the platform secret or
    * reject the request cleanly, with the failure logged under the client's id.
@@ -256,10 +273,18 @@ export class ClientConfigService {
         systemPromptExtra: config.systemPromptExtra,
       },
 
+      proactive: {
+        templates: parse(messageTemplatesSchema, config.messageTemplates, "messageTemplates"),
+        followUp: parse(followUpPolicySchema, config.followUpPolicy, "followUpPolicy"),
+        smsFallbackEnabled: config.smsFallbackEnabled,
+        vehiclePhotosEnabled: config.vehiclePhotosEnabled,
+      },
+
       channels: {
         metaPhoneNumberId: config.metaPhoneNumberId,
         metaBusinessAccountId: config.metaBusinessAccountId,
         instagramScopedPageId: config.instagramScopedPageId,
+        twilioAccountSid: config.twilioAccountSid,
         twilioNumber: config.twilioNumber,
       },
     };

@@ -124,6 +124,48 @@ async function main(): Promise<void> {
           SLA_BREACH: "BATCHED",
         },
 
+        // Proactive messaging. Templates must match what Meta approved, name
+        // and language exactly, or every send outside the window is refused.
+        messageTemplates: [
+          {
+            kind: "QUOTE_NO_REPLY",
+            name: "quote_follow_up",
+            language: "en",
+            bodyParams: ["customerName", "vehicleName"],
+            freeFormBody:
+              "Hi {{customerName}}, just checking you saw the {{vehicleName}} quote. Still want me to hold it for you?",
+          },
+          {
+            kind: "HOLD_EXPIRING",
+            name: "hold_expiring",
+            language: "en",
+            bodyParams: ["customerName", "vehicleName"],
+            freeFormBody: "{{customerName}}, the {{vehicleName}} is still held for you but not for much longer.",
+          },
+          {
+            kind: "MISSED_CALL",
+            name: "missed_call",
+            language: "en",
+            bodyParams: ["businessName"],
+            freeFormBody: "Sorry we missed your call. This is {{businessName}}, what can we get you?",
+          },
+        ],
+
+        // Chase once a day later, once more two days after that, and never in
+        // the middle of the night.
+        followUpPolicy: {
+          rules: [
+            { kind: "QUOTE_NO_REPLY", enabled: true, delayMinutes: 1_440, maxAttempts: 2, repeatAfterMinutes: 2_880 },
+            { kind: "HOLD_EXPIRING", enabled: true, delayMinutes: 15, maxAttempts: 1 },
+            { kind: "MISSED_CALL", enabled: true, delayMinutes: 1, maxAttempts: 1 },
+          ],
+          quietHours: { from: "21:30", to: "08:30" },
+        },
+
+        // Off until the client says otherwise: SMS is billed per segment.
+        smsFallbackEnabled: false,
+        vehiclePhotosEnabled: true,
+
         agentDisplayName: "Sara",
         agentToneNotes: "Warm, brief, never pushy. Match the customer's language. Short sentences.",
 

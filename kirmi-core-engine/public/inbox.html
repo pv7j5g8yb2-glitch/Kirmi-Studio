@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Inbox</title>
+<style>
+:root{
+  --bg:#0B0C0D; --panel:#131517; --panel2:#1A1D20; --line:#282C30;
+  --ink:#F2F0EC; --mute:#8C877E; --faint:#5E5A54;
+  --brass:#C9A227; --in:#1F2937; --out:#14312A;
+  --live:#17A876; --warn:#C8802B; --stop:#D9564B;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.gate{display:grid;place-items:center;height:100%;padding:20px}
+.gate .card{background:var(--panel);border:1px solid var(--line);padding:26px;max-width:380px;width:100%}
+.gate h1{font-size:15px;letter-spacing:.24em;text-transform:uppercase;margin:0 0 6px;font-weight:700}
+.gate p{color:var(--mute);margin:0 0 18px;font-size:13px}
+.gate input{width:100%;background:var(--bg);border:1px solid var(--line);padding:10px 12px;font-family:var(--mono);font-size:13px}
+.gate button{margin-top:12px;width:100%;background:var(--brass);color:#000;border:0;padding:11px;font-weight:700;cursor:pointer}
+.gate .err{color:var(--stop);font-size:12.5px;margin-top:10px;min-height:1em}
+
+.app{display:none;grid-template-columns:330px 1fr;height:100%}
+.app.on{display:grid}
+@media(max-width:820px){
+  .app.on{grid-template-columns:1fr}
+  .thread{display:none}
+  .app.reading .list{display:none}
+  .app.reading .thread{display:flex}
+}
+
+.list{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+.bar{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bar .t{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass)}
+.bar .dot{width:7px;height:7px;border-radius:50%;background:var(--live);display:inline-block;margin-right:6px}
+.bar button{background:none;border:1px solid var(--line);color:var(--mute);padding:4px 9px;font-size:11px;cursor:pointer}
+.rows{overflow-y:auto;flex:1;min-height:0}
+.row{padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;display:grid;gap:4px}
+.row:hover{background:var(--panel2)}
+.row.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--brass)}
+.row .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.row .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .ago{font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap}
+.row .snip{color:var(--mute);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.tag{font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;padding:2px 6px;border:1px solid}
+.tag.ai{color:var(--live);border-color:rgba(23,168,118,.45)}
+.tag.human{color:var(--brass);border-color:rgba(201,162,39,.45)}
+.tag.win{color:var(--warn);border-color:rgba(200,128,43,.45)}
+.tag.shut{color:var(--stop);border-color:rgba(217,86,75,.45)}
+.tag.ch{color:var(--faint);border-color:var(--line)}
+
+.thread{display:flex;flex-direction:column;min-height:0}
+.thead{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel)}
+.thead .back{display:none;background:none;border:1px solid var(--line);color:var(--mute);padding:4px 9px;font-size:11px;cursor:pointer}
+@media(max-width:820px){.thead .back{display:inline-block}}
+.thead .who{font-weight:700}
+.thead .spacer{flex:1}
+.toggle{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+.toggle button{border:1px solid var(--line);background:var(--bg);color:var(--mute);padding:5px 11px;cursor:pointer;font-size:11px}
+.toggle button.on{color:var(--live);border-color:rgba(23,168,118,.5);background:rgba(23,168,118,.08)}
+.toggle button.off{color:var(--stop);border-color:rgba(217,86,75,.5);background:rgba(217,86,75,.08)}
+
+.msgs{flex:1;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.msg{max-width:min(560px,78%);padding:9px 13px;border-radius:3px;word-wrap:break-word;overflow-wrap:anywhere}
+.msg.in{background:var(--in);align-self:flex-start}
+.msg.out{background:var(--out);align-self:flex-end}
+.msg .meta{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--faint);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap}
+.msg img{max-width:100%;border-radius:3px;margin-top:7px;display:block}
+.msg .chase{color:var(--brass)}
+.empty{color:var(--faint);text-align:center;padding:40px 20px;font-size:13px}
+
+.composer{border-top:1px solid var(--line);padding:12px 14px;background:var(--panel);display:flex;flex-direction:column;gap:8px}
+.composer textarea{width:100%;min-height:62px;max-height:180px;background:var(--bg);border:1px solid var(--line);padding:10px 12px;resize:vertical}
+.composer .send{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.composer .hint{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.composer button{background:var(--brass);color:#000;border:0;padding:9px 20px;font-weight:700;cursor:pointer}
+.composer button:disabled{opacity:.4;cursor:not-allowed}
+.blocked{background:rgba(217,86,75,.08);border:1px solid rgba(217,86,75,.4);color:var(--stop);padding:10px 12px;font-size:12.5px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:9px 16px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .18s}
+.toast.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="card">
+    <h1>Inbox</h1>
+    <p>Paste the API key for this account. It stays in this browser and is never sent anywhere except this server.</p>
+    <input id="key" type="password" placeholder="kirmi_live_..." autocomplete="off" spellcheck="false">
+    <button id="enter" type="button">Open the inbox</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="list">
+    <div class="bar">
+      <span class="t"><span class="dot"></span><span id="liveCount">0</span> open</span>
+      <button id="signout" type="button">Sign out</button>
+    </div>
+    <div class="rows" id="rows"></div>
+  </div>
+
+  <div class="thread" id="thread">
+    <div class="thead">
+      <button class="back" id="back" type="button">Back</button>
+      <span class="who" id="who">Select a conversation</span>
+      <span class="spacer"></span>
+      <span class="toggle" id="toggleWrap" hidden>
+        <span>Agent</span>
+        <button id="aiBtn" type="button">—</button>
+      </span>
+    </div>
+    <div class="msgs" id="msgs"><div class="empty">Pick someone on the left.</div></div>
+    <div class="composer" id="composer" hidden>
+      <div class="blocked" id="blocked" hidden></div>
+      <textarea id="draft" placeholder="Type a reply. Sending takes the conversation off the agent."></textarea>
+      <div class="send">
+        <span class="hint" id="windowHint"></span>
+        <button id="sendBtn" type="button">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "kirmi.inbox.key";
+  var POLL_MS = 5000;
+
+  var el = function (id) { return document.getElementById(id); };
+  var apiKey = null, selected = null, timer = null, lastSig = "";
+
+  /* ---------------------------------------------------------------- api -- */
+  function api(path, options) {
+    var opts = options || {};
+    return fetch("/api/inbox" + path, {
+      method: opts.method || "GET",
+      headers: Object.assign({ "x-api-key": apiKey }, opts.body ? { "content-type": "application/json" } : {}),
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok) throw Object.assign(new Error(data && data.error ? data.error.code : "request failed"), {
+          status: r.status, payload: data
+        });
+        return data;
+      });
+    });
+  }
+
+  function toast(text) {
+    var t = el("toast");
+    t.textContent = text;
+    t.classList.add("on");
+    setTimeout(function () { t.classList.remove("on"); }, 2600);
+  }
+
+  /* ------------------------------------------------------------- render -- */
+  function ago(iso) {
+    if (!iso) return "";
+    var s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 60) return s + "s";
+    if (s < 3600) return Math.floor(s / 60) + "m";
+    if (s < 86400) return Math.floor(s / 3600) + "h";
+    return Math.floor(s / 86400) + "d";
+  }
+
+  function tag(cls, text) {
+    var s = document.createElement("span");
+    s.className = "tag " + cls;
+    s.textContent = text;
+    return s;
+  }
+
+  function renderList(items) {
+    var rows = el("rows");
+    el("liveCount").textContent = String(items.length);
+
+    // Rebuilding on every poll would fight the user's scroll position and
+    // their text selection, so redraw only when something actually moved.
+    var sig = items.map(function (c) {
+      return c.id + ":" + (c.lastMessage ? c.lastMessage.at : "") + ":" + c.aiEnabled + ":" + c.windowClosed;
+    }).join("|");
+    if (sig === lastSig) return;
+    lastSig = sig;
+
+    rows.textContent = "";
+    if (items.length === 0) {
+      var e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "No open conversations.";
+      rows.appendChild(e);
+      return;
+    }
+
+    items.forEach(function (c) {
+      var row = document.createElement("div");
+      row.className = "row" + (c.id === selected ? " sel" : "");
+      row.setAttribute("role", "button");
+      row.tabIndex = 0;
+
+      var top = document.createElement("div");
+      top.className = "top";
+      var nm = document.createElement("span");
+      nm.className = "nm";
+      nm.textContent = c.customerName || "Unknown caller";
+      var t = document.createElement("span");
+      t.className = "ago";
+      t.textContent = c.lastMessage ? ago(c.lastMessage.at) : "";
+      top.appendChild(nm); top.appendChild(t);
+
+      var snip = document.createElement("div");
+      snip.className = "snip";
+      snip.textContent = c.lastMessage
+        ? (c.lastMessage.direction === "INBOUND" ? "" : "You: ") + c.lastMessage.body
+        : "No messages yet";
+
+      var tags = document.createElement("div");
+      tags.className = "tags";
+      tags.appendChild(tag("ch", c.channel));
+      tags.appendChild(c.aiEnabled ? tag("ai", "Agent on") : tag("human", "You have it"));
+      if (c.windowClosed) tags.appendChild(tag("shut", "Window shut"));
+      else if (c.windowMinutesLeft < 120) tags.appendChild(tag("win", c.windowMinutesLeft + "m left"));
+
+      row.appendChild(top); row.appendChild(snip); row.appendChild(tags);
+      row.addEventListener("click", function () { open(c); });
+      row.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); open(c); }
+      });
+      rows.appendChild(row);
+    });
+  }
+
+  function renderThread(messages) {
+    var box = el("msgs");
+    var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+    box.textContent = "";
+
+    if (!messages.length) {
+      var e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "Nothing here yet.";
+      box.appendChild(e);
+      return;
+    }
+
+    messages.forEach(function (m) {
+      var d = document.createElement("div");
+      d.className = "msg " + (m.direction === "INBOUND" ? "in" : "out");
+
+      var body = document.createElement("div");
+      body.textContent = m.body;
+      d.appendChild(body);
+
+      (m.mediaUrls || []).forEach(function (url) {
+        var img = document.createElement("img");
+        img.src = url;
+        img.alt = "";
+        img.loading = "lazy";
+        d.appendChild(img);
+      });
+
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      var when = document.createElement("span");
+      when.textContent = new Date(m.at).toLocaleString();
+      meta.appendChild(when);
+      if (m.latencyMs != null) {
+        var lat = document.createElement("span");
+        lat.textContent = "answered in " + (m.latencyMs / 1000).toFixed(1) + "s";
+        meta.appendChild(lat);
+      }
+      if (m.followUp) {
+        var f = document.createElement("span");
+        f.className = "chase";
+        f.textContent = "follow up";
+        meta.appendChild(f);
+      }
+      d.appendChild(meta);
+      box.appendChild(d);
+    });
+
+    if (atBottom) box.scrollTop = box.scrollHeight;
+  }
+
+  /* ------------------------------------------------------------ actions -- */
+  function open(c) {
+    selected = c.id;
+    lastSig = "";
+    document.getElementById("app").classList.add("reading");
+    el("who").textContent = c.customerName || "Unknown caller";
+    el("toggleWrap").hidden = false;
+    el("composer").hidden = false;
+
+    var btn = el("aiBtn");
+    btn.textContent = c.aiEnabled ? "On" : "Off";
+    btn.className = c.aiEnabled ? "on" : "off";
+    btn.onclick = function () { setAi(c.id, !c.aiEnabled); };
+
+    var blocked = el("blocked");
+    if (c.windowClosed) {
+      blocked.hidden = false;
+      blocked.textContent =
+        "More than 24 hours since this customer wrote, so WhatsApp will not accept a free reply. " +
+        "Only an approved template can go out.";
+      el("draft").disabled = true;
+      el("sendBtn").disabled = true;
+      el("windowHint").textContent = "Window shut";
+    } else {
+      blocked.hidden = true;
+      el("draft").disabled = false;
+      el("sendBtn").disabled = false;
+      el("windowHint").textContent = c.windowMinutesLeft + " minutes left to reply freely";
+    }
+
+    loadThread();
+  }
+
+  function loadThread() {
+    if (!selected) return Promise.resolve();
+    return api("/conversations/" + selected + "/messages")
+      .then(function (d) { renderThread(d.messages || []); })
+      .catch(function () { /* a poll failure is not worth a banner */ });
+  }
+
+  function setAi(id, enabled) {
+    api("/conversations/" + id + "/ai", { method: "POST", body: { enabled: enabled } })
+      .then(function () {
+        toast(enabled ? "Agent is answering this thread again" : "You have this thread, the agent has stopped");
+        lastSig = "";
+        return refresh();
+      })
+      .catch(function () { toast("Could not change that"); });
+  }
+
+  function send() {
+    var draft = el("draft");
+    var text = draft.value.trim();
+    if (!text || !selected) return;
+
+    el("sendBtn").disabled = true;
+    api("/conversations/" + selected + "/reply", { method: "POST", body: { body: text } })
+      .then(function () {
+        draft.value = "";
+        toast("Sent. The agent has stopped on this thread.");
+        lastSig = "";
+        return loadThread().then(refresh);
+      })
+      .catch(function (err) {
+        if (err.status === 409) {
+          toast("The 24 hour window has closed on this conversation");
+        } else {
+          toast("That did not send");
+        }
+      })
+      .finally(function () { el("sendBtn").disabled = false; });
+  }
+
+  function refresh() {
+    return api("/conversations")
+      .then(function (d) {
+        var items = d.conversations || [];
+        renderList(items);
+        if (selected) {
+          var current = items.filter(function (c) { return c.id === selected; })[0];
+          if (current) {
+            var btn = el("aiBtn");
+            btn.textContent = current.aiEnabled ? "On" : "Off";
+            btn.className = current.aiEnabled ? "on" : "off";
+            btn.onclick = function () { setAi(current.id, !current.aiEnabled); };
+          }
+        }
+      })
+      .catch(function (err) {
+        if (err.status === 401 || err.status === 403) signOut("That key was not accepted.");
+      });
+  }
+
+  function loop() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      Promise.all([refresh(), loadThread()]).then(loop, loop);
+    }, POLL_MS);
+  }
+
+  /* --------------------------------------------------------------- gate -- */
+  function signIn(key) {
+    apiKey = key;
+    return api("/conversations").then(function () {
+      try { localStorage.setItem(KEY, key); } catch (e) { /* private window */ }
+      el("gate").style.display = "none";
+      el("app").classList.add("on");
+      refresh().then(loop);
+    });
+  }
+
+  function signOut(message) {
+    clearTimeout(timer);
+    apiKey = null; selected = null; lastSig = "";
+    try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    el("app").classList.remove("on");
+    el("gate").style.display = "grid";
+    el("gateErr").textContent = message || "";
+  }
+
+  el("enter").addEventListener("click", function () {
+    var v = el("key").value.trim();
+    if (!v) return;
+    el("gateErr").textContent = "";
+    signIn(v).catch(function () { el("gateErr").textContent = "That key was not accepted."; });
+  });
+  el("key").addEventListener("keydown", function (e) { if (e.key === "Enter") el("enter").click(); });
+  el("signout").addEventListener("click", function () { signOut(""); });
+  el("back").addEventListener("click", function () {
+    document.getElementById("app").classList.remove("reading");
+  });
+  el("sendBtn").addEventListener("click", send);
+  el("draft").addEventListener("keydown", function (e) {
+    // Enter sends, shift+enter breaks the line. Matches every messaging app a
+    // salesperson already uses, so nobody has to be told.
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { stored = null; }
+  if (stored) signIn(stored).catch(function () { signOut(""); });
+})();
+</script>
+</body>
+</html>

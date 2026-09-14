@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { AGENT_TOOLS, CHECK_AVAILABILITY, CREATE_HOLD, SEARCH_VEHICLES, SYSTEM_GUARDRAILS } from "../../src/orchestrator/tools.schema.js";
+import {
+  AGENT_TOOLS,
+  CHECK_AVAILABILITY,
+  CREATE_HOLD,
+  SEARCH_VEHICLES,
+  SEND_VEHICLE_PHOTOS,
+  SYSTEM_GUARDRAILS,
+} from "../../src/orchestrator/tools.schema.js";
 
 /**
  * These tests guard the central architectural claim of the engine: the model
@@ -12,8 +19,23 @@ import { AGENT_TOOLS, CHECK_AVAILABILITY, CREATE_HOLD, SEARCH_VEHICLES, SYSTEM_G
  * grounding guarantee is defended by CI rather than by memory.
  */
 describe("agent tool schemas", () => {
-  it("exposes exactly the three intended tools", () => {
-    expect(AGENT_TOOLS.map((t) => t.name).sort()).toEqual(["CHECK_AVAILABILITY", "CREATE_HOLD", "SEARCH_VEHICLES"]);
+  it("exposes exactly the four intended tools", () => {
+    expect(AGENT_TOOLS.map((t) => t.name).sort()).toEqual([
+      "CHECK_AVAILABILITY",
+      "CREATE_HOLD",
+      "SEARCH_VEHICLES",
+      "SEND_VEHICLE_PHOTOS",
+    ]);
+  });
+
+  it("gives the model no field through which to supply a photograph URL", () => {
+    // The same boundary as prices. Photographs come from the vehicle row; if a
+    // url or attachment field ever appears here, the model can send a customer
+    // a picture of a car that is not in the fleet.
+    for (const field of Object.keys(SEND_VEHICLE_PHOTOS.input_schema.properties)) {
+      expect(/url|link|image|attachment|photoUrl/i.test(field), `SEND_VEHICLE_PHOTOS.${field}`).toBe(false);
+    }
+    expect(SEND_VEHICLE_PHOTOS.input_schema.required).toEqual(["vehicleId"]);
   });
 
   it("gives the model no field through which to supply a price", () => {

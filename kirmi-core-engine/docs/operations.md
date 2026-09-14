@@ -101,3 +101,61 @@ Erasing a customer therefore means disabling that trigger deliberately, as the
 owner role, doing the deletion, and re-enabling it. That is inconvenient on
 purpose: it is a visible act rather than a stray `UPDATE`, and it leaves a trace
 in the audit trail of whoever has database access.
+
+## Proactive messaging
+
+Two things run on a timer rather than in response to a customer, and both need
+something outside this repository to enqueue them.
+
+| Queue | Interval | What happens if it stops |
+|---|---|---|
+| `hold-sweeper` | every 5 minutes | Expired holds are never released, and cars stay off the market |
+| `follow-up-sweeper` | every 5 minutes | Quiet customers are never chased, and conversion quietly reverts to what it was before |
+
+Both are idempotent and platform wide, so running them more often is harmless
+and running two copies is safe. Enqueue with BullMQ's repeatable jobs, a
+Kubernetes CronJob, or the scheduler your platform already has.
+
+### The 24 hour window
+
+Meta allows a free form message only within 24 hours of the customer's last
+one. Outside it the only permitted form is a template the business registered
+in advance, and this is the single most common reason a follow up appears to do
+nothing: the send is refused by the carrier, not by this engine.
+
+`client_configurations.message_templates` holds the approved set. Name and
+language must match Meta exactly. `src/channels/messaging-window.ts` treats the
+last ten minutes of the window as already closed, because the window shuts on
+Meta's clock rather than ours and a send that leaves at 23h59m can arrive after
+it has shut.
+
+### Quiet hours
+
+`follow_up_policy.quietHours` applies only to messages the engine starts, never
+to replies. Answering a customer at 03:18 is the product; ringing their phone
+at 03:18 to say a quote is still available is a complaint and, eventually, a
+block. A due follow up inside quiet hours is deferred to the end of the window,
+not dropped.
+
+## The human inbox
+
+Served by the API process itself at `/inbox`, as a static page with no build
+step and no second deployment. It calls `/api/inbox` on the same origin, so
+there is no CORS to configure.
+
+Sign in with a client API key carrying the `inbox:read` scope
+(`npm run db:issue-key`). The key is typed by the person using it and kept in
+their browser; the page holds no secret of its own.
+
+Typing a reply takes the conversation over implicitly. Requiring a switch to be
+flipped first is a step that gets skipped under pressure, and the failure mode
+is a customer being answered twice, once by a person and once by the agent.
+
+## Break glass
+
+`kirmi_admin` holds BYPASSRLS for incident response and lawful erasure. Note
+that BYPASSRLS alone is not enough: the role also needs table privileges, which
+are granted in migration `20260914181718` rather than in `provision-roles.sql`,
+because that script runs before any table exists.
+
+Never configure a running service with this role.

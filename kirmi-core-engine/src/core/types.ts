@@ -1,4 +1,11 @@
-import type { AddOnDefinition, EscalationTarget, OpeningHours, SeasonalModifier } from "../config/tenant-schema.js";
+import type {
+  AddOnDefinition,
+  EscalationTarget,
+  FollowUpPolicy,
+  MessageTemplate,
+  OpeningHours,
+  SeasonalModifier,
+} from "../config/tenant-schema.js";
 import type { Minor } from "./money.js";
 
 /**
@@ -78,11 +85,27 @@ export interface TenantProfile {
     systemPromptExtra: string | null;
   };
 
+  /**
+   * Reaching a customer who has not written first.
+   *
+   * Separate from `agent` because none of this is personality: these are the
+   * only messages Meta permits outside the 24 hour window, and sending one that
+   * is not on this list is a guaranteed refusal rather than a stylistic choice.
+   */
+  proactive: {
+    templates: MessageTemplate[];
+    followUp: FollowUpPolicy;
+    /** SMS costs money per segment, so it is opt in per client. */
+    smsFallbackEnabled: boolean;
+    vehiclePhotosEnabled: boolean;
+  };
+
   /** Non secret channel identifiers, safe to cache and log. */
   channels: {
     metaPhoneNumberId: string | null;
     metaBusinessAccountId: string | null;
     instagramScopedPageId: string | null;
+    twilioAccountSid: string | null;
     twilioNumber: string | null;
   };
 }

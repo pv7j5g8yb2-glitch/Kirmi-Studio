@@ -116,7 +116,28 @@ export const CREATE_HOLD: ToolSchema = {
   },
 };
 
-export const AGENT_TOOLS: ToolSchema[] = [SEARCH_VEHICLES, CHECK_AVAILABILITY, CREATE_HOLD];
+export const SEND_VEHICLE_PHOTOS: ToolSchema = {
+  name: "SEND_VEHICLE_PHOTOS",
+  description:
+    "Send the customer the client's own photographs of a specific vehicle. Use this when they ask to see the car, " +
+    "or when they are choosing between two and a picture would settle it. " +
+    "The photographs are the client's real stock images: you are not describing them, you are sending them, " +
+    "so do not narrate what is in them and never claim a colour or a feature a photograph might not show.",
+  input_schema: {
+    type: "object",
+    properties: {
+      vehicleId: { type: "string", description: "Vehicle id exactly as returned by SEARCH_VEHICLES." },
+      caption: {
+        type: "string",
+        description: "One short line to send with the first photograph. Optional, and shorter is better.",
+      },
+    },
+    required: ["vehicleId"],
+    additionalProperties: false,
+  },
+};
+
+export const AGENT_TOOLS: ToolSchema[] = [SEARCH_VEHICLES, CHECK_AVAILABILITY, CREATE_HOLD, SEND_VEHICLE_PHOTOS];
 
 /**
  * The guardrails, prepended to every client's own persona notes.

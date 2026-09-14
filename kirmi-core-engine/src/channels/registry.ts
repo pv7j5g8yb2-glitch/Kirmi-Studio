@@ -2,6 +2,7 @@ import type { ChannelType } from "@prisma/client";
 import type { Logger } from "../core/logger.js";
 import type { ClientConfigService } from "../services/client-config.service.js";
 import { MetaChannelProvider } from "./meta.provider.js";
+import { TwilioSmsProvider } from "./twilio.provider.js";
 import type { ChannelProvider } from "./types.js";
 
 /**
@@ -17,6 +18,9 @@ export class ChannelRegistry {
   constructor(config: ClientConfigService, log: Logger) {
     this.register(new MetaChannelProvider("WHATSAPP", config, log));
     this.register(new MetaChannelProvider("INSTAGRAM", config, log));
+    // Outbound only. Nothing routes a conversation here; the delivery worker
+    // reaches for it when WhatsApp reports the number cannot receive.
+    this.register(new TwilioSmsProvider(config, log));
     // TELEPHONY is inbound only: a missed call becomes a WhatsApp message
     // rather than an automated call back, because nobody wants a robot ringing
     // them back, and WEB is served by the dashboard rather than a carrier.

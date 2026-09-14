@@ -3,7 +3,7 @@ import { QUEUE_NAMES } from "../../config/constants.js";
 import { env } from "../../config/env.js";
 import { queueRedis } from "../../cache/redis.js";
 import type { Container } from "../../core/container.js";
-import { TransientDeliveryError } from "../../channels/types.js";
+import { TransientDeliveryError, WHATSAPP_UNREACHABLE_CODES } from "../../channels/types.js";
 import type { OutboundDeliveryJob } from "../jobs.js";
 
 /**
@@ -28,7 +28,7 @@ export function createOutboundDeliveryWorker(container: Container): Worker<Outbo
   return new Worker<OutboundDeliveryJob>(
     QUEUE_NAMES.outboundDelivery,
     async (job) => {
-      const { clientId, conversationId, messageId, channel, to, body } = job.data;
+      const { clientId, conversationId, messageId, channel, to, body, media, template, allowSmsFallback } = job.data;
       const log = container.log.child({ clientId, conversationId, messageId, channel });
 
       const provider = container.channels.get(channel);
@@ -38,9 +38,42 @@ export function createOutboundDeliveryWorker(container: Container): Worker<Outbo
       }
 
       try {
-        const result = await provider.send(clientId, { to, body, correlationId: messageId });
+        const result = await provider.send(clientId, {
+          to,
+          body,
+          correlationId: messageId,
+          ...(media?.length ? { media } : {}),
+          ...(template ? { template } : {}),
+        });
+
+        // WhatsApp taking one attachment per message is a carrier constraint,
+        // not ours, so a set of photographs is a short sequence of sends. The
+        // first carries the caption; the rest are bare images following it.
+        if (result.accepted && media && media.length > 1) {
+          for (const extra of media.slice(1)) {
+            try {
+              await provider.send(clientId, { to, body: "", correlationId: messageId, media: [extra] });
+            } catch (err) {
+              // One photograph failing is not worth failing the reply that
+              // already arrived, and retrying the job would resend the first.
+              log.warn({ err, url: extra.url }, "a follow-on attachment did not send");
+            }
+          }
+        }
 
         if (!result.accepted) {
+          // The number is not on WhatsApp at all. On a proactive send that is
+          // exactly what SMS is for: a missed call from a number with no
+          // WhatsApp is otherwise a dead end, and a dead end at a luxury desk
+          // is a four figure loss.
+          if (allowSmsFallback && shouldTrySms(result.rejectionCode)) {
+            const delivered = await trySms(container, clientId, conversationId, messageId, to, body);
+            if (delivered) {
+              log.info({ to }, "whatsapp was unreachable, delivered by sms instead");
+              return;
+            }
+          }
+
           // The carrier refused. A person needs to know, because the customer
           // is sitting there having received nothing.
           log.error({ rejection: result.rejection }, "carrier refused the message");
@@ -82,4 +115,56 @@ export function createOutboundDeliveryWorker(container: Container): Worker<Outbo
       limiter: { max: 60, duration: 1_000 },
     },
   );
+}
+
+function shouldTrySms(code: number | undefined): boolean {
+  // An unknown refusal is NOT an SMS case. Falling back on every failure would
+  // turn a malformed template into a surprise text message, billed per segment.
+  return typeof code === "number" && WHATSAPP_UNREACHABLE_CODES.has(code);
+}
+
+/**
+ * Send the same thing as a text message, and record it as its own outbound.
+ *
+ * A separate message row rather than an update, because it genuinely is one:
+ * it went to a different channel, it has a different carrier id, and the
+ * transcript should show a human reading it that the WhatsApp attempt failed
+ * and a text followed.
+ */
+async function trySms(
+  container: Container,
+  clientId: string,
+  conversationId: string,
+  originalMessageId: string,
+  to: string,
+  body: string,
+): Promise<boolean> {
+  const tenant = await container.config.loadProfile(clientId);
+  if (!tenant.proactive.smsFallbackEnabled) return false;
+
+  const sms = container.channels.get("SMS");
+  if (!sms) return false;
+
+  try {
+    const result = await sms.send(clientId, { to, body, correlationId: originalMessageId });
+    if (!result.accepted) return false;
+
+    await container.db.withTenant(clientId, async (tx) => {
+      await tx.message.create({
+        data: {
+          clientId,
+          conversationId,
+          direction: "OUTBOUND",
+          channel: "SMS",
+          body,
+          providerMessageId: result.providerMessageId,
+          meta: { smsFallbackFor: originalMessageId },
+        },
+      });
+    });
+    return true;
+  } catch (err) {
+    container.log.warn({ err, clientId, to }, "sms fallback failed too");
+    return false;
+  }
 }

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Container } from "../core/container.js";
+import { attributionRoutes } from "./attribution.routes.js";
 import { healthRoutes } from "./health.routes.js";
 import { inboxRoutes } from "./inbox.routes.js";
 import { metricsRoutes } from "./metrics.routes.js";
@@ -22,6 +23,7 @@ export function buildRoutes(container: Container): Router {
   router.use("/webhooks", twilioWebhookRoutes(container));
   router.use("/api/metrics", metricsRoutes(container));
   router.use("/api/inbox", inboxRoutes(container));
+  router.use("/api/attribution", attributionRoutes(container));
 
   return router;
 }

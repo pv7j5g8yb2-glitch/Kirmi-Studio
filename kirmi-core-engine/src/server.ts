@@ -1,4 +1,6 @@
 import { createServer, type Server } from "node:http";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import { env } from "./config/env.js";
@@ -51,6 +53,27 @@ export function createApp(container: Container): Express {
   // public endpoint.
   app.use(express.json({ limit: "1mb", verify: captureRawBody }));
   app.use(express.urlencoded({ extended: false, limit: "1mb", verify: captureRawBody }));
+
+  // The human inbox, served from this same process.
+  //
+  // One less thing to deploy, and more importantly one less origin: the page
+  // calls /api/inbox on the host it was served from, so there is no CORS to
+  // configure and no second set of credentials to keep in step. It is a static
+  // file that holds no secret of its own; the API key is typed by the person
+  // using it and lives only in their browser.
+  app.use(
+    "/inbox",
+    express.static(inboxAssetPath(), {
+      index: "inbox.html",
+      extensions: ["html"],
+      maxAge: "5m",
+      setHeaders: (res) => {
+        // A takeover screen has no business being framed or indexed.
+        res.setHeader("X-Frame-Options", "DENY");
+        res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      },
+    }),
+  );
 
   app.use(buildRoutes(container));
 
@@ -124,4 +147,16 @@ if (isEntryPoint) {
       logger().fatal({ err }, "failed to start");
       process.exit(1);
     });
+}
+
+/**
+ * Where the inbox page lives, in both source and build layouts.
+ *
+ * `tsc` emits to dist/ but does not copy static assets, so a path resolved
+ * relative to this module points at dist/../public in a build and at
+ * src/../public when running from source. Both land on the same directory,
+ * which is the point.
+ */
+function inboxAssetPath(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), "..", "public");
 }

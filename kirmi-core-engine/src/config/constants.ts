@@ -32,6 +32,7 @@ export const QUEUE_NAMES = {
   outboundDelivery: "outbound-delivery",
   metricsAttribution: "metrics-attribution",
   holdSweeper: "hold-sweeper",
+  followUpSweeper: "follow-up-sweeper",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

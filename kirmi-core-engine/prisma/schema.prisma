@@ -46,6 +46,10 @@ enum ChannelType {
   INSTAGRAM
   TELEPHONY
   WEB
+  /// Outbound only, and only as a fallback. A customer who messaged on
+  /// WhatsApp is answered on WhatsApp; SMS exists for the number that has no
+  /// WhatsApp at all, which on a missed call is otherwise a dead end.
+  SMS
 }
 
 /// The conversation state machine. HUMAN_TAKEOVER is terminal for the AI:
@@ -107,6 +111,23 @@ enum EscalationReason {
   INVENTORY_CONFLICT
 }
 
+/// Why a customer is being contacted again without having written first. Each
+/// value maps to an approved WhatsApp template, because outside the 24 hour
+/// window Meta permits nothing else.
+enum FollowUpKind {
+  QUOTE_NO_REPLY
+  HOLD_EXPIRING
+  MISSED_CALL
+  REACTIVATION
+}
+
+enum FollowUpStatus {
+  SCHEDULED
+  SENT
+  CANCELLED
+  FAILED
+}
+
 enum EscalationStatus {
   OPEN
   ACKNOWLEDGED
@@ -133,6 +154,9 @@ enum AuditEventType {
   WEBHOOK_DUPLICATE
   SLA_BREACH
   CONFIG_CHANGED
+  FOLLOW_UP_SENT
+  PAYMENT_LINK_ISSUED
+  MEDIA_SENT
 }
 
 enum AuditActor {
@@ -194,6 +218,7 @@ model Client {
   quotes        Quote[]
   reservations  Reservation[]
   escalations   Escalation[]
+  followUps     FollowUp[]
   webhookEvents WebhookEvent[]
   auditLogs     PlatformAuditLog[]
 
@@ -250,7 +275,20 @@ model ClientConfiguration {
   metaAccessTokenEncrypted String? @map("meta_access_token_encrypted")
   metaGraphApiVersion      String  @default("v21.0") @map("meta_graph_api_version")
   twilioAuthTokenEncrypted String? @map("twilio_auth_token_encrypted")
+  twilioAccountSid         String? @map("twilio_account_sid")
   twilioNumber             String? @map("twilio_number")
+  /// SMS to a number with no WhatsApp. Off by default per client, because it
+  /// costs money per message and not every client wants it.
+  smsFallbackEnabled       Boolean @default(false) @map("sms_fallback_enabled")
+  /// Whether the agent may send vehicle photographs unprompted.
+  vehiclePhotosEnabled     Boolean @default(true) @map("vehicle_photos_enabled")
+  /// Approved WhatsApp templates, keyed by FollowUpKind. Nothing may be sent
+  /// outside the 24 hour window unless it is named here.
+  /// [{ "kind":"QUOTE_NO_REPLY", "name":"quote_follow_up", "language":"en",
+  ///    "bodyParams":["customerName","vehicleName"] }]
+  messageTemplates         Json    @default("[]") @map("message_templates")
+  /// [{ "kind":"QUOTE_NO_REPLY", "delayMinutes":1440, "maxAttempts":2 }]
+  followUpPolicy           Json    @default("{}") @map("follow_up_policy")
   /// Payment gateway access keys, encrypted blob: { "provider":"stripe", "secret":"<enc>" }
   paymentAccessKeys        Json    @default("{}") @map("payment_access_keys")
 
@@ -447,6 +485,7 @@ model Conversation {
   quotes       Quote[]
   reservations Reservation[]
   escalations  Escalation[]
+  followUps    FollowUp[]
 
   @@index([clientId, state])
   @@index([clientId, aiEnabled])
@@ -584,6 +623,10 @@ model Reservation {
   currency         String  @default("AED")
   paymentProvider  String? @map("payment_provider")
   paymentReference String? @map("payment_reference")
+  /// Where the customer pays. Issued by src/payments, never composed by the
+  /// model, so a hallucinated URL cannot reach a customer.
+  paymentUrl        String?   @map("payment_url")
+  paymentLinkSentAt DateTime? @map("payment_link_sent_at") @db.Timestamptz(3)
 
   confirmedAt        DateTime? @map("confirmed_at") @db.Timestamptz(3)
   cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(3)
@@ -597,6 +640,46 @@ model Reservation {
   @@index([clientId, status])
   @@index([status, holdExpiresAt])
   @@map("reservations")
+}
+
+/// A scheduled second attempt at a customer who went quiet.
+///
+/// This table is the single reason the engine beats a person at conversion.
+/// A human forgets the quote they sent on Tuesday. A row with a due date does
+/// not, and the sweeper picks it up whether or not anybody is at the desk.
+///
+/// Held in Postgres rather than as a delayed queue job on purpose: a follow up
+/// that vanishes with a Redis restart is a booking nobody ever finds out was
+/// lost, and the client is entitled to see why they were contacted.
+model FollowUp {
+  id             String       @id @default(uuid()) @db.Uuid
+  clientId       String       @map("client_id") @db.Uuid
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  quoteId        String?      @map("quote_id") @db.Uuid
+  reservationId  String?      @map("reservation_id") @db.Uuid
+
+  kind   FollowUpKind
+  status FollowUpStatus @default(SCHEDULED)
+  /// Which attempt this is. A second chase reads differently from the first.
+  attempt Int           @default(1)
+  dueAt   DateTime      @map("due_at") @db.Timestamptz(3)
+
+  /// Resolved at send time, not at schedule time: a template can be revoked by
+  /// Meta between scheduling and sending.
+  templateName    String?   @map("template_name")
+  sentMessageId   String?   @map("sent_message_id") @db.Uuid
+  sentAt          DateTime? @map("sent_at") @db.Timestamptz(3)
+  cancelledReason String?   @map("cancelled_reason")
+  lastError       String?   @map("last_error")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([clientId, status, dueAt])
+  @@index([clientId, conversationId, status])
+  @@map("follow_ups")
 }
 
 // ===========================================================================

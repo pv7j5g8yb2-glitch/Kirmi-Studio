@@ -1,4 +1,5 @@
 import { QUEUE_NAMES } from "../config/constants.js";
+import type { OutboundMedia, OutboundTemplate } from "../channels/types.js";
 
 /**
  * Job contracts.
@@ -28,9 +29,22 @@ export interface OutboundDeliveryJob {
   clientId: string;
   conversationId: string;
   messageId: string;
-  channel: "WHATSAPP" | "INSTAGRAM" | "TELEPHONY" | "WEB";
+  channel: "WHATSAPP" | "INSTAGRAM" | "TELEPHONY" | "WEB" | "SMS";
   to: string;
   body: string;
+  /** Photographs, sent one Graph call each because WhatsApp takes one per message. */
+  media?: OutboundMedia[];
+  /** Set when the 24 hour window has shut and only a template may be sent. */
+  template?: OutboundTemplate;
+  /** Only proactive sends may fall back to SMS. A reply inside a live WhatsApp
+   *  thread that fails should surface as a failure, not reappear as a text
+   *  message from an unfamiliar number halfway through a conversation. */
+  allowSmsFallback?: boolean;
+}
+
+/** One pass over everything owed to customers. Platform wide, like the sweeper. */
+export interface FollowUpSweeperJob {
+  clientId?: string;
 }
 
 export interface MetricsAttributionJob {
@@ -44,6 +58,7 @@ export interface HoldSweeperJob {
 }
 
 export interface JobPayloads {
+  [QUEUE_NAMES.followUpSweeper]: FollowUpSweeperJob;
   [QUEUE_NAMES.webhookIngest]: WebhookIngestJob;
   [QUEUE_NAMES.outboundDelivery]: OutboundDeliveryJob;
   [QUEUE_NAMES.metricsAttribution]: MetricsAttributionJob;

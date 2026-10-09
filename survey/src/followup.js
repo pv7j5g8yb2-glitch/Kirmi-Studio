@@ -5,7 +5,7 @@ const PROVIDER =
   (process.env.GROQ_API_KEY ? "groq" : process.env.ANTHROPIC_API_KEY ? "anthropic" : "deterministic");
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const anthropic = PROVIDER === "anthropic" ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
@@ -23,10 +23,12 @@ is to decide whether one more focused follow-up question would get real signal o
 frequency, cost, or willingness to pay, and if so, write that one question.
 
 Rules:
-- Dig into whichever baseline answer was vaguest or most promising, do not repeat a question already asked.
+- Dig into whichever baseline answer was vaguest or most promising, do not repeat a question already asked, including asking for the same fact in different words.
+- If the last one or two answers dodged a direct ask (no real number, no real specifics), that approach is not working, switch to a different angle or a different signal entirely rather than re-asking for the same thing another way.
 - Ask exactly one question at a time, plain and specific, never multiple questions in one.
 - Stop as soon as pain, frequency, cost, and willingness to pay are all reasonably clear, do not pad the survey out for its own sake.
 - Never pitch, describe, or mention any product or company. This is research only.
+- Never suggest a specific price or number when asking about willingness to pay, let them state their own. Naming a figure anchors their answer and corrupts the signal.
 - Never use em dashes or en dashes in the question text.`;
 
 const GROQ_JSON_INSTRUCTION = `\n\nRespond with only a JSON object of exactly this shape, no other text before or after it:

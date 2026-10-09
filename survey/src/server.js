@@ -96,6 +96,18 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   const response = await get(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`, [responseId, request.params.slug]);
   if (!response) return reply.code(404).send({ error: "unknown response" });
   if (response.status !== "in_progress") return reply.code(409).send({ error: "response already finished" });
+
+  // Editing an answer to a question already behind the current one: update it in place
+  // and send them back to wherever they actually are. This never touches anything asked
+  // after it, so an already-generated adaptive question is left exactly as it was, the
+  // worst case is a later question reads slightly stale, never a broken or duplicated one.
+  if (questionNumber < response.current_question_number) {
+    const existing = await get(`SELECT id FROM answers WHERE response_id = ? AND question_number = ?`, [responseId, questionNumber]);
+    if (!existing) return reply.code(404).send({ error: "no earlier answer at that question number" });
+    await run(`UPDATE answers SET answer_text = ?, answered_at = ? WHERE id = ?`, [answer.trim(), nowIso(), existing.id]);
+    return { done: false, question: { number: response.current_question_number, text: response.current_question_text } };
+  }
+
   if (response.current_question_number !== questionNumber) {
     return reply.code(409).send({ error: "question number does not match what this response is currently on" });
   }

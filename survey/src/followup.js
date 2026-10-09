@@ -16,6 +16,11 @@ const DETERMINISTIC_FOLLOWUPS = [
   "If you did not have to deal with that at all, what would you do with the time instead?",
 ];
 
+// At least this many follow-ups get asked before the model is allowed to stop early,
+// so a respondent who gives a tidy, complete-sounding baseline still gets real depth,
+// without forcing a follow-up onto a topic that genuinely has nothing left to add.
+const MINIMUM_FOLLOWUPS = 3;
+
 const SYSTEM_PROMPT = `You are running a short product-market-fit research survey for
 a founder validating pain before building anything. The respondent has just answered a
 batch of baseline questions, the same ones every respondent in this niche gets. Your job
@@ -27,7 +32,7 @@ Rules:
 - If the last one or two answers dodged a direct ask (no real number, no real specifics), that approach is not working, switch to a different angle or a different signal entirely rather than re-asking for the same thing another way.
 - Once a signal (pain, frequency, cost, or willingness to pay) already has a clear, usable answer, leave it. Do not spend another question refining a number that is already good enough, spend it on whichever of the four signals is still unclear instead.
 - If you cannot come up with a question that is genuinely different in substance from every question already in the transcript, below, baseline or follow-up, stop instead (continue: false). A respondent who has already dodged the same ask twice is not going to answer a third rephrasing of it, stopping cleanly beats repeating yourself.
-- Ask exactly one question at a time, plain and specific, never multiple questions in one.
+- Ask exactly one question at a time, plain and specific, never multiple questions in one. Joining two asks with "and" is still two questions, split them and ask the more important half now, the other later if it is still needed.
 - Stop as soon as pain, frequency, cost, and willingness to pay are all reasonably clear, do not pad the survey out for its own sake.
 - Never pitch, describe, or mention any product or company. This is research only.
 - Never suggest a specific price or number when asking about willingness to pay, let them state their own. Naming a figure anchors their answer and corrupts the signal.
@@ -51,16 +56,20 @@ function buildTranscriptText(niche, transcript) {
   return `Niche: ${niche}\n\n${lines.join("\n\n")}`;
 }
 
-function buildUserMessage(segment, transcript, remaining) {
-  return `${buildTranscriptText(segment.niche, transcript)}\n\nYou have at most ${remaining} more question(s) left in this survey, including this one if you ask it. Decide now.`;
+function buildUserMessage(segment, transcript, remaining, followupsAsked) {
+  const base = `${buildTranscriptText(segment.niche, transcript)}\n\nYou have at most ${remaining} more question(s) left in this survey, including this one if you ask it.`;
+  if (followupsAsked < MINIMUM_FOLLOWUPS) {
+    return `${base} You have only asked ${followupsAsked} follow-up question(s) so far, and at least ${MINIMUM_FOLLOWUPS} are required before you are allowed to stop. Stopping now is not an option yet, you must continue: true and write a genuinely useful next question, picking whichever of the four signals (pain, frequency, cost, willingness to pay) is least developed so far, even if the others already look reasonably clear.`;
+  }
+  return `${base} You have asked the required minimum of ${MINIMUM_FOLLOWUPS} follow-ups already, so stopping now is a real option if nothing left would add genuine signal. Decide now.`;
 }
 
-async function decideWithAnthropic({ segment, transcript, remaining }) {
+async function decideWithAnthropic({ segment, transcript, remaining, followupsAsked }) {
   const result = await anthropic.messages.create({
     model: ANTHROPIC_MODEL,
     max_tokens: 300,
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserMessage(segment, transcript, remaining) }],
+    messages: [{ role: "user", content: buildUserMessage(segment, transcript, remaining, followupsAsked) }],
     tools: [
       {
         name: "decide_next_question",
@@ -83,7 +92,7 @@ async function decideWithAnthropic({ segment, transcript, remaining }) {
   return { continue: Boolean(toolUse.input.continue), question: toolUse.input.question ?? null };
 }
 
-async function decideWithGroq({ segment, transcript, remaining }) {
+async function decideWithGroq({ segment, transcript, remaining, followupsAsked }) {
   const res = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
@@ -95,7 +104,7 @@ async function decideWithGroq({ segment, transcript, remaining }) {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT + GROQ_JSON_INSTRUCTION },
-        { role: "user", content: buildUserMessage(segment, transcript, remaining) },
+        { role: "user", content: buildUserMessage(segment, transcript, remaining, followupsAsked) },
       ],
     }),
   });
@@ -107,32 +116,45 @@ async function decideWithGroq({ segment, transcript, remaining }) {
   return { continue: Boolean(parsed.continue), question: parsed.question ?? null };
 }
 
+function countFollowupsAsked(transcript) {
+  return transcript.filter((t) => t.kind === "followup").length;
+}
+
 function decideDeterministic({ transcript }) {
-  const followupsAsked = transcript.filter((t) => t.kind === "followup").length;
+  const followupsAsked = countFollowupsAsked(transcript);
   if (followupsAsked >= DETERMINISTIC_FOLLOWUPS.length) return { continue: false, question: null };
   return { continue: true, question: DETERMINISTIC_FOLLOWUPS[followupsAsked] };
 }
 
-async function decideWithProvider({ segment, transcript, remaining }) {
+async function decideWithProvider({ segment, transcript, remaining, followupsAsked }) {
   if (PROVIDER === "groq") {
     try {
-      return await decideWithGroq({ segment, transcript, remaining });
+      return await decideWithGroq({ segment, transcript, remaining, followupsAsked });
     } catch (err) {
       console.error("Groq follow-up decision failed, falling back to the fixed follow-ups for this turn:", err.message);
       return decideDeterministic({ transcript });
     }
   }
-  if (PROVIDER === "anthropic") return decideWithAnthropic({ segment, transcript, remaining });
+  if (PROVIDER === "anthropic") return decideWithAnthropic({ segment, transcript, remaining, followupsAsked });
   return decideDeterministic({ transcript });
 }
 
 export async function decideNextQuestion({ segment, transcript, remaining }) {
   if (remaining <= 0) return { continue: false, question: null };
 
-  const decision = await decideWithProvider({ segment, transcript, remaining });
+  const followupsAsked = countFollowupsAsked(transcript);
+  const decision = await decideWithProvider({ segment, transcript, remaining, followupsAsked });
 
   if (decision.question && suggestsAPrice(decision.question)) {
     console.error("Blocked a generated follow-up that suggested a price, falling back for this turn:", decision.question);
+    return decideDeterministic({ transcript });
+  }
+
+  // Hard floor, independent of the prompt: if the model still tried to stop before the
+  // minimum despite being told not to, it does not get to. A respondent never ends up
+  // with fewer than MINIMUM_FOLLOWUPS just because a smaller model ignored an instruction.
+  if (followupsAsked < MINIMUM_FOLLOWUPS && (!decision.continue || !decision.question)) {
+    console.error(`Model tried to stop at ${followupsAsked} follow-ups, below the minimum of ${MINIMUM_FOLLOWUPS}, forcing a fallback question instead.`);
     return decideDeterministic({ transcript });
   }
 

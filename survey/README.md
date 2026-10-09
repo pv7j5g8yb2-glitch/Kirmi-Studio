@@ -18,9 +18,25 @@ npm run dev             # survey + admin on :3100
 ```
 
 - Send a respondent to `/s/bookkeepers` or `/s/real-estate-agents`.
-- You sign in at `/admin/login` and see every response, finished or not, at `/admin`,
-  with an Export CSV button that pulls every answer from every respondent, one row per
-  answer, ready to paste in for analysis.
+- You sign in at `/admin/login` with whatever you set `ADMIN_PASSWORD` to in `.env`,
+  there is no separate account to create. `/admin` then lists every response, finished
+  or not, with an Export CSV button that pulls every answer from every respondent, one
+  row per answer, ready to paste in for analysis.
+
+This only runs on your own machine or wherever you deploy it, there is no public link
+until you put it somewhere reachable from the internet. For a real send-out you need a
+host with a persistent disk, since the whole thing is one SQLite file: Fly.io's free
+tier includes a small persistent volume, which is the cheapest option that will not
+silently wipe responses on a restart. Render and Railway's free tiers are ephemeral
+disk, fine for poking at it, not for collecting real answers.
+
+### Tagging who a link went to
+
+Add `?ref=` to any link you send, for example `/s/bookkeepers?ref=ig_jane_doe`. That
+value is stored on the response with no extra step for the respondent, so you can match
+a finished survey straight back to the WhatsApp or Instagram contact you sent it to,
+without asking them to re-type a phone number or email into a form that is meant to
+read as pure research. `/admin` shows the ref on every row.
 
 ## Adaptive follow-ups
 
@@ -30,6 +46,14 @@ Claude read each respondent's baseline answers and decide, one question at a tim
 whether a follow-up is worth asking and what it should be, stopping once pain,
 frequency, cost, and willingness to pay are clear or the 10 question cap is hit,
 whichever comes first.
+
+### Optional contact capture
+
+After the last question, the respondent sees one optional step asking if they would
+take a follow-up by phone or email, with a Skip button right next to it. It only
+appears once the survey is actually finished, so it never costs you a completion, and
+it is there mainly for whoever forwards the link to someone you have not DMed
+yourself, where a `ref` tag alone will not identify them.
 
 ## Adding a niche
 

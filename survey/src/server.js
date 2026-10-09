@@ -61,11 +61,12 @@ app.post("/api/s/:slug/start", async (request, reply) => {
 
   const id = randomUUID();
   const firstQuestion = { number: 1, text: segment.baseline[0] };
+  const ref = typeof request.body?.ref === "string" ? request.body.ref.slice(0, 200) : null;
 
   db.prepare(
-    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text)
-     VALUES (?, ?, ?, 'in_progress', ?, ?)`
-  ).run(id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text);
+    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, source_ref)
+     VALUES (?, ?, ?, 'in_progress', ?, ?, ?)`
+  ).run(id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, ref);
 
   return { responseId: id, question: firstQuestion, cap: QUESTION_CAP };
 });
@@ -123,6 +124,24 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   return { done: true };
 });
 
+app.post("/api/s/:slug/contact", async (request, reply) => {
+  const { responseId, phone, email } = request.body ?? {};
+  if (!responseId) return reply.code(400).send({ error: "responseId is required" });
+
+  const response = db
+    .prepare(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`)
+    .get(responseId, request.params.slug);
+  if (!response) return reply.code(404).send({ error: "unknown response" });
+  if (response.status !== "completed") return reply.code(409).send({ error: "only offered after the survey is finished" });
+
+  db.prepare(`UPDATE responses SET contact_phone = ?, contact_email = ? WHERE id = ?`).run(
+    typeof phone === "string" && phone.trim() ? phone.trim().slice(0, 100) : null,
+    typeof email === "string" && email.trim() ? email.trim().slice(0, 200) : null,
+    responseId
+  );
+  return { ok: true };
+});
+
 // ---- admin ----
 
 app.get("/admin/login", async (request, reply) => {
@@ -150,6 +169,7 @@ app.get("/api/admin/responses", { preHandler: requireAdmin }, async () => {
     .prepare(
       `SELECT r.id, r.segment_slug, r.started_at, r.finished_at, r.status,
               r.current_question_number, r.current_question_text,
+              r.source_ref, r.contact_phone, r.contact_email,
               (SELECT COUNT(*) FROM answers a WHERE a.response_id = r.id) as answer_count
        FROM responses r ORDER BY r.started_at DESC`
     )
@@ -168,6 +188,7 @@ app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, r
   const rows = db
     .prepare(
       `SELECT r.id as response_id, r.segment_slug, r.started_at, r.finished_at, r.status,
+              r.source_ref, r.contact_phone, r.contact_email,
               a.question_number, a.question_kind, a.question_text, a.answer_text
        FROM responses r
        LEFT JOIN answers a ON a.response_id = r.id
@@ -176,7 +197,10 @@ app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, r
     .all();
 
   const csv = toCsv(
-    ["response_id", "segment_slug", "started_at", "finished_at", "status", "question_number", "question_kind", "question_text", "answer_text"],
+    [
+      "response_id", "segment_slug", "started_at", "finished_at", "status", "source_ref",
+      "contact_phone", "contact_email", "question_number", "question_kind", "question_text", "answer_text",
+    ],
     rows
   );
   reply.header("Content-Type", "text/csv").header("Content-Disposition", "attachment; filename=survey-export.csv").send(csv);

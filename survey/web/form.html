@@ -38,6 +38,14 @@
     resize: vertical;
   }
   textarea:focus { outline: 2px solid #222; }
+  input[type="tel"], input[type="email"] {
+    width: 100%;
+    font-size: 15px;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
   button {
     margin-top: 14px;
     background: #1a1a1a;
@@ -71,6 +79,17 @@
     <div id="done-screen" class="hidden thanks">
       <h1>Thanks, genuinely.</h1>
       <p>That is everything. This goes straight into research, nothing else happens with it.</p>
+      <div id="contact-screen">
+        <p class="progress">Totally optional</p>
+        <p class="intro">If this turns into something worth telling you about, can I follow up? Leave this blank and skip it if you would rather not.</p>
+        <input id="contact-phone" type="tel" placeholder="Phone (optional)" />
+        <input id="contact-email" type="email" placeholder="Email (optional)" style="margin-top:8px" />
+        <div style="margin-top:12px">
+          <button id="contact-send-btn">Send</button>
+          <button id="contact-skip-btn" style="background:#eee;color:#333;margin-left:8px">Skip</button>
+        </div>
+      </div>
+      <p id="contact-done" class="hidden">Got it, thanks.</p>
     </div>
 
     <div id="missing-screen" class="hidden">
@@ -91,6 +110,9 @@
   const answerInput = document.getElementById("answer-input");
   const submitBtn = document.getElementById("submit-btn");
   const errorBox = document.getElementById("error");
+  const contactScreen = document.getElementById("contact-screen");
+  const contactDone = document.getElementById("contact-done");
+  const ref = new URLSearchParams(window.location.search).get("ref");
 
   let responseId = null;
   let cap = 10;
@@ -128,7 +150,11 @@
   }
 
   async function begin() {
-    const startRes = await fetch("/api/s/" + slug + "/start", { method: "POST" });
+    const startRes = await fetch("/api/s/" + slug + "/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref }),
+    });
     const data = await startRes.json();
     responseId = data.responseId;
     cap = data.cap;
@@ -174,6 +200,28 @@
   submitBtn.addEventListener("click", submitAnswer);
   answerInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitAnswer();
+  });
+
+  document.getElementById("contact-send-btn").addEventListener("click", async () => {
+    const phone = document.getElementById("contact-phone").value.trim();
+    const email = document.getElementById("contact-email").value.trim();
+    if (!phone && !email) {
+      contactScreen.classList.add("hidden");
+      contactDone.classList.remove("hidden");
+      return;
+    }
+    await fetch("/api/s/" + slug + "/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ responseId, phone, email }),
+    });
+    contactScreen.classList.add("hidden");
+    contactDone.classList.remove("hidden");
+  });
+
+  document.getElementById("contact-skip-btn").addEventListener("click", () => {
+    contactScreen.classList.add("hidden");
+    contactDone.classList.remove("hidden");
   });
 
   if (!slug) {

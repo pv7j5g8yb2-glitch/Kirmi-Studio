@@ -16,7 +16,10 @@ db.exec(`
     finished_at TEXT,
     status TEXT NOT NULL DEFAULT 'in_progress',
     current_question_number INTEGER NOT NULL,
-    current_question_text TEXT NOT NULL
+    current_question_text TEXT NOT NULL,
+    source_ref TEXT,
+    contact_phone TEXT,
+    contact_email TEXT
   );
 
   CREATE TABLE IF NOT EXISTS answers (

@@ -35,7 +35,7 @@
 
   <table id="table" class="hidden">
     <thead>
-      <tr><th>Started</th><th>Segment</th><th>Status</th><th>Answered</th><th>Currently on / dropped at</th></tr>
+      <tr><th>Started</th><th>Segment</th><th>Ref</th><th>Status</th><th>Answered</th><th>Currently on / dropped at</th><th>Contact</th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
@@ -65,13 +65,16 @@
     rowsEl.innerHTML = data.responses
       .map((r) => {
         const dropOff = r.status === "completed" ? "-" : "Q" + r.current_question_number + ": " + escapeHtml(r.current_question_text);
+        const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ") || "-";
         return (
           '<tr class="row" data-id="' + r.id + '">' +
           "<td>" + new Date(r.started_at).toLocaleString() + "</td>" +
           "<td>" + escapeHtml(r.segment_slug) + "</td>" +
+          "<td>" + escapeHtml(r.source_ref || "-") + "</td>" +
           '<td class="status-' + r.status + '">' + r.status.replace("_", " ") + "</td>" +
           "<td>" + r.answer_count + "</td>" +
           "<td>" + dropOff + "</td>" +
+          "<td>" + contact + "</td>" +
           "</tr>"
         );
       })
@@ -86,10 +89,13 @@
     if (!res.ok) return;
     const data = await res.json();
     const r = data.response;
+    const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ");
     const header =
       "<h2>Response started " + new Date(r.started_at).toLocaleString() +
       " &middot; " + escapeHtml(r.segment_slug) +
-      " &middot; " + r.status.replace("_", " ") + "</h2>";
+      " &middot; " + r.status.replace("_", " ") +
+      (r.source_ref ? " &middot; ref " + escapeHtml(r.source_ref) : "") +
+      (contact ? " &middot; " + contact : "") + "</h2>";
     const qa = data.answers
       .map((a) => '<div class="q">Q' + a.number + " (" + a.kind + "): " + escapeHtml(a.text) + '</div><div class="a">' + escapeHtml(a.answer) + "</div>")
       .join("");

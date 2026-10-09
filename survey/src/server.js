@@ -98,14 +98,34 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   if (response.status !== "in_progress") return reply.code(409).send({ error: "response already finished" });
 
   // Editing an answer to a question already behind the current one: update it in place
-  // and send them back to wherever they actually are. This never touches anything asked
-  // after it, so an already-generated adaptive question is left exactly as it was, the
-  // worst case is a later question reads slightly stale, never a broken or duplicated one.
+  // and send them back to wherever they actually are. Already-answered questions after it
+  // are left untouched, that is an honest record of what was asked and answered at the
+  // time, only visible again if they explicitly review it. But the question they are
+  // about to answer next might have been generated from the content they just changed,
+  // if so it gets regenerated from the corrected transcript before they see it again,
+  // so it never visibly references something they clearly just went back and edited.
   if (questionNumber < response.current_question_number) {
     const existing = await get(`SELECT id FROM answers WHERE response_id = ? AND question_number = ?`, [responseId, questionNumber]);
     if (!existing) return reply.code(404).send({ error: "no earlier answer at that question number" });
     await run(`UPDATE answers SET answer_text = ?, answered_at = ? WHERE id = ?`, [answer.trim(), nowIso(), existing.id]);
-    return { done: false, question: { number: response.current_question_number, text: response.current_question_text } };
+
+    const pendingNumber = response.current_question_number;
+    if (pendingNumber <= BASELINE_COUNT) {
+      // Baseline questions are fixed text for everyone, nothing to regenerate.
+      return { done: false, question: { number: pendingNumber, text: response.current_question_text } };
+    }
+
+    const remaining = QUESTION_CAP - (pendingNumber - 1);
+    const transcript = await loadTranscript(responseId);
+    const decision = await decideNextQuestion({ segment, transcript, remaining });
+
+    if (decision.continue && decision.question) {
+      await run(`UPDATE responses SET current_question_text = ? WHERE id = ?`, [decision.question, responseId]);
+      return { done: false, question: { number: pendingNumber, text: decision.question } };
+    }
+
+    await run(`UPDATE responses SET status = 'completed', finished_at = ? WHERE id = ?`, [nowIso(), responseId]);
+    return { done: true };
   }
 
   if (response.current_question_number !== questionNumber) {

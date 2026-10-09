@@ -289,17 +289,15 @@
         return;
       }
       const data = await res.json();
-      if (isReview) {
-        history[viewIndex].answer = answer;
-        renderQuestion(data.question);
-      } else if (data.done) {
+      if (isReview) history[viewIndex].answer = answer;
+      if (data.done) {
         questionScreen.classList.add("hidden");
         if (respondentName) {
           doneScreen.querySelector("h1").textContent = "Thanks, " + respondentName + ".";
         }
         doneScreen.classList.remove("hidden");
       } else {
-        history.push({ number: current.number, text: current.text, answer });
+        if (!isReview) history.push({ number: current.number, text: current.text, answer });
         renderQuestion(data.question);
       }
     } finally {

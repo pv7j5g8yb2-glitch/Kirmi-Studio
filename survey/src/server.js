@@ -39,6 +39,19 @@ async function loadTranscript(responseId) {
 
 app.get("/healthz", async () => ({ ok: true }));
 
+app.get("/", async (request, reply) => {
+  const links = listSegments()
+    .map((s) => `<li><a href="/s/${s.slug}">/s/${s.slug}</a> — ${s.niche}</li>`)
+    .join("");
+  reply.type("text/html").send(`<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kirmi Survey</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:480px;margin:60px auto;padding:0 20px;color:#1a1a1a}
+a{color:#1a1a1a}li{margin:8px 0}</style></head>
+<body><h1>Kirmi Survey</h1><p>This isn't a page for visitors, it's the survey tool itself. Live surveys:</p>
+<ul>${links}</ul><p><a href="/admin/login">Admin login</a></p></body></html>`);
+});
+
 // ---- respondent-facing survey ----
 
 app.get("/s/:slug", async (request, reply) => {

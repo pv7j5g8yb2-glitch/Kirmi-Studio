@@ -60,12 +60,61 @@
   .error { color: #b00020; font-size: 14px; margin-top: 10px; }
   .thanks { line-height: 1.6; }
   .hidden { display: none; }
+  .skip-link {
+    display: inline-block;
+    margin-top: 10px;
+    margin-left: 10px;
+    color: #888;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  input[type="text"] {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  #hello-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+  }
+  #hello-text {
+    font-size: 34px;
+    font-weight: 600;
+    opacity: 0;
+    transform: scale(0.85);
+    animation: hello-in 1.3s cubic-bezier(.2,.9,.3,1) forwards;
+  }
+  @keyframes hello-in {
+    0% { opacity: 0; transform: scale(0.85); }
+    30% { opacity: 1; transform: scale(1.03); }
+    45% { transform: scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1); }
+  }
 </style>
 </head>
 <body>
   <div class="card">
     <div id="intro-screen">
       <p class="progress">Loading&hellip;</p>
+    </div>
+
+    <div id="name-screen" class="hidden">
+      <p class="progress">Almost there</p>
+      <h1>What should I call you?</h1>
+      <input id="name-input" type="text" placeholder="First name" />
+      <button id="name-continue-btn">Continue</button>
+      <span class="skip-link" id="name-skip-btn">Skip</span>
+    </div>
+
+    <div id="hello-screen" class="hidden">
+      <div id="hello-text"></div>
     </div>
 
     <div id="question-screen" class="hidden">
@@ -102,6 +151,10 @@
 (function () {
   const slug = window.location.pathname.split("/").filter(Boolean)[1];
   const introScreen = document.getElementById("intro-screen");
+  const nameScreen = document.getElementById("name-screen");
+  const nameInput = document.getElementById("name-input");
+  const helloScreen = document.getElementById("hello-screen");
+  const helloText = document.getElementById("hello-text");
   const questionScreen = document.getElementById("question-screen");
   const doneScreen = document.getElementById("done-screen");
   const missingScreen = document.getElementById("missing-screen");
@@ -117,6 +170,7 @@
   let responseId = null;
   let cap = 10;
   let current = null;
+  let respondentName = null;
 
   function showError(message) {
     errorBox.textContent = message;
@@ -146,14 +200,28 @@
     introScreen.innerHTML =
       '<p class="progress">Before you start</p><h1>' + meta.niche.charAt(0).toUpperCase() + meta.niche.slice(1) + '</h1><p class="intro">' +
       meta.intro + '</p><button id="start-btn">Start</button>';
-    document.getElementById("start-btn").addEventListener("click", begin);
+    document.getElementById("start-btn").addEventListener("click", () => {
+      introScreen.classList.add("hidden");
+      nameScreen.classList.remove("hidden");
+      nameInput.focus();
+    });
+  }
+
+  function showHelloThen(callback) {
+    nameScreen.classList.add("hidden");
+    helloText.textContent = "Hello, " + respondentName;
+    helloScreen.classList.remove("hidden");
+    setTimeout(() => {
+      helloScreen.classList.add("hidden");
+      callback();
+    }, 1300);
   }
 
   async function begin() {
     const startRes = await fetch("/api/s/" + slug + "/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref }),
+      body: JSON.stringify({ ref, name: respondentName }),
     });
     const data = await startRes.json();
     responseId = data.responseId;
@@ -188,6 +256,9 @@
       const data = await res.json();
       if (data.done) {
         questionScreen.classList.add("hidden");
+        if (respondentName) {
+          doneScreen.querySelector("h1").textContent = "Thanks, " + respondentName + ".";
+        }
         doneScreen.classList.remove("hidden");
       } else {
         renderQuestion(data.question);
@@ -200,6 +271,9 @@
   submitBtn.addEventListener("click", submitAnswer);
   answerInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitAnswer();
+  });
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("name-continue-btn").click();
   });
 
   document.getElementById("contact-send-btn").addEventListener("click", async () => {
@@ -222,6 +296,22 @@
   document.getElementById("contact-skip-btn").addEventListener("click", () => {
     contactScreen.classList.add("hidden");
     contactDone.classList.remove("hidden");
+  });
+
+  document.getElementById("name-continue-btn").addEventListener("click", () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameScreen.classList.add("hidden");
+      begin();
+      return;
+    }
+    respondentName = name;
+    showHelloThen(begin);
+  });
+
+  document.getElementById("name-skip-btn").addEventListener("click", () => {
+    nameScreen.classList.add("hidden");
+    begin();
   });
 
   if (!slug) {

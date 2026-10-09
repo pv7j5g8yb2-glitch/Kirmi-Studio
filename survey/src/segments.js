@@ -31,3 +31,7 @@ export const segments = {
 export function getSegment(slug) {
   return segments[slug] ?? null;
 }
+
+export function listSegments() {
+  return Object.entries(segments).map(([slug, segment]) => ({ slug, niche: segment.niche }));
+}

@@ -1,14 +1,13 @@
-import Database from "better-sqlite3";
+import { createClient } from "@libsql/client";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-const DB_PATH = process.env.DATABASE_FILE || "./data/survey.db";
-mkdirSync(dirname(DB_PATH), { recursive: true });
+const url = process.env.DATABASE_URL || "file:./data/survey.db";
+if (url.startsWith("file:")) mkdirSync(dirname(url.slice("file:".length)), { recursive: true });
 
-export const db = new Database(DB_PATH);
-db.pragma("journal_mode = WAL");
+export const client = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });
 
-db.exec(`
+await client.executeMultiple(`
   CREATE TABLE IF NOT EXISTS responses (
     id TEXT PRIMARY KEY,
     segment_slug TEXT NOT NULL,
@@ -18,6 +17,7 @@ db.exec(`
     current_question_number INTEGER NOT NULL,
     current_question_text TEXT NOT NULL,
     source_ref TEXT,
+    respondent_name TEXT,
     contact_phone TEXT,
     contact_email TEXT
   );
@@ -34,3 +34,17 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS answers_response_idx ON answers(response_id);
 `);
+
+export async function run(sql, args = []) {
+  return client.execute({ sql, args });
+}
+
+export async function get(sql, args = []) {
+  const res = await client.execute({ sql, args });
+  return res.rows[0] ?? null;
+}
+
+export async function all(sql, args = []) {
+  const res = await client.execute({ sql, args });
+  return res.rows;
+}

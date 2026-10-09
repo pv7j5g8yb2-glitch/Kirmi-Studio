@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { db } from "./db.js";
-import { getSegment, QUESTION_CAP, BASELINE_COUNT } from "./segments.js";
+import { run, get, all } from "./db.js";
+import { getSegment, listSegments, QUESTION_CAP, BASELINE_COUNT } from "./segments.js";
 import { decideNextQuestion } from "./followup.js";
 import { checkPassword, requireAdmin, setAdminCookie, clearAdminCookie } from "./admin-auth.js";
 import { toCsv } from "./csv.js";
@@ -29,14 +29,12 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function loadTranscript(responseId) {
-  const rows = db
-    .prepare(
-      `SELECT question_number as number, question_kind as kind, question_text as text, answer_text as answer
-       FROM answers WHERE response_id = ? ORDER BY question_number ASC`
-    )
-    .all(responseId);
-  return rows;
+async function loadTranscript(responseId) {
+  return all(
+    `SELECT question_number as number, question_kind as kind, question_text as text, answer_text as answer
+     FROM answers WHERE response_id = ? ORDER BY question_number ASC`,
+    [responseId]
+  );
 }
 
 app.get("/healthz", async () => ({ ok: true }));
@@ -62,11 +60,13 @@ app.post("/api/s/:slug/start", async (request, reply) => {
   const id = randomUUID();
   const firstQuestion = { number: 1, text: segment.baseline[0] };
   const ref = typeof request.body?.ref === "string" ? request.body.ref.slice(0, 200) : null;
+  const name = typeof request.body?.name === "string" && request.body.name.trim() ? request.body.name.trim().slice(0, 60) : null;
 
-  db.prepare(
-    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, source_ref)
-     VALUES (?, ?, ?, 'in_progress', ?, ?, ?)`
-  ).run(id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, ref);
+  await run(
+    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, source_ref, respondent_name)
+     VALUES (?, ?, ?, 'in_progress', ?, ?, ?, ?)`,
+    [id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, ref, name]
+  );
 
   return { responseId: id, question: firstQuestion, cap: QUESTION_CAP };
 });
@@ -80,9 +80,7 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
     return reply.code(400).send({ error: "responseId, questionNumber, questionText and a non-empty answer are required" });
   }
 
-  const response = db
-    .prepare(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`)
-    .get(responseId, request.params.slug);
+  const response = await get(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`, [responseId, request.params.slug]);
   if (!response) return reply.code(404).send({ error: "unknown response" });
   if (response.status !== "in_progress") return reply.code(409).send({ error: "response already finished" });
   if (response.current_question_number !== questionNumber) {
@@ -90,37 +88,38 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   }
 
   const kind = questionNumber <= BASELINE_COUNT ? "baseline" : "followup";
-  db.prepare(
+  await run(
     `INSERT INTO answers (id, response_id, question_number, question_kind, question_text, answer_text, answered_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(randomUUID(), responseId, questionNumber, kind, questionText, answer.trim(), nowIso());
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [randomUUID(), responseId, questionNumber, kind, questionText, answer.trim(), nowIso()]
+  );
 
   if (questionNumber < BASELINE_COUNT) {
     const nextNumber = questionNumber + 1;
     const nextQuestion = { number: nextNumber, text: segment.baseline[nextNumber - 1] };
-    db.prepare(`UPDATE responses SET current_question_number = ?, current_question_text = ? WHERE id = ?`).run(
+    await run(`UPDATE responses SET current_question_number = ?, current_question_text = ? WHERE id = ?`, [
       nextQuestion.number,
       nextQuestion.text,
-      responseId
-    );
+      responseId,
+    ]);
     return { done: false, question: nextQuestion };
   }
 
   const remaining = QUESTION_CAP - questionNumber;
-  const transcript = loadTranscript(responseId);
+  const transcript = await loadTranscript(responseId);
   const decision = await decideNextQuestion({ segment, transcript, remaining });
 
   if (decision.continue && decision.question && questionNumber < QUESTION_CAP) {
     const nextQuestion = { number: questionNumber + 1, text: decision.question };
-    db.prepare(`UPDATE responses SET current_question_number = ?, current_question_text = ? WHERE id = ?`).run(
+    await run(`UPDATE responses SET current_question_number = ?, current_question_text = ? WHERE id = ?`, [
       nextQuestion.number,
       nextQuestion.text,
-      responseId
-    );
+      responseId,
+    ]);
     return { done: false, question: nextQuestion };
   }
 
-  db.prepare(`UPDATE responses SET status = 'completed', finished_at = ? WHERE id = ?`).run(nowIso(), responseId);
+  await run(`UPDATE responses SET status = 'completed', finished_at = ? WHERE id = ?`, [nowIso(), responseId]);
   return { done: true };
 });
 
@@ -128,17 +127,15 @@ app.post("/api/s/:slug/contact", async (request, reply) => {
   const { responseId, phone, email } = request.body ?? {};
   if (!responseId) return reply.code(400).send({ error: "responseId is required" });
 
-  const response = db
-    .prepare(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`)
-    .get(responseId, request.params.slug);
+  const response = await get(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`, [responseId, request.params.slug]);
   if (!response) return reply.code(404).send({ error: "unknown response" });
   if (response.status !== "completed") return reply.code(409).send({ error: "only offered after the survey is finished" });
 
-  db.prepare(`UPDATE responses SET contact_phone = ?, contact_email = ? WHERE id = ?`).run(
+  await run(`UPDATE responses SET contact_phone = ?, contact_email = ? WHERE id = ?`, [
     typeof phone === "string" && phone.trim() ? phone.trim().slice(0, 100) : null,
     typeof email === "string" && email.trim() ? email.trim().slice(0, 200) : null,
-    responseId
-  );
+    responseId,
+  ]);
   return { ok: true };
 });
 
@@ -164,41 +161,41 @@ app.get("/admin", { preHandler: requireAdmin }, async (request, reply) => {
   reply.type("text/html").send(adminHtml);
 });
 
+app.get("/api/admin/segments", { preHandler: requireAdmin }, async () => {
+  return { segments: listSegments() };
+});
+
 app.get("/api/admin/responses", { preHandler: requireAdmin }, async () => {
-  const rows = db
-    .prepare(
-      `SELECT r.id, r.segment_slug, r.started_at, r.finished_at, r.status,
-              r.current_question_number, r.current_question_text,
-              r.source_ref, r.contact_phone, r.contact_email,
-              (SELECT COUNT(*) FROM answers a WHERE a.response_id = r.id) as answer_count
-       FROM responses r ORDER BY r.started_at DESC`
-    )
-    .all();
-  return { responses: rows };
+  const responses = await all(
+    `SELECT r.id, r.segment_slug, r.started_at, r.finished_at, r.status,
+            r.current_question_number, r.current_question_text,
+            r.source_ref, r.respondent_name, r.contact_phone, r.contact_email,
+            (SELECT COUNT(*) FROM answers a WHERE a.response_id = r.id) as answer_count
+     FROM responses r ORDER BY r.started_at DESC`
+  );
+  return { responses };
 });
 
 app.get("/api/admin/responses/:id", { preHandler: requireAdmin }, async (request, reply) => {
-  const response = db.prepare(`SELECT * FROM responses WHERE id = ?`).get(request.params.id);
+  const response = await get(`SELECT * FROM responses WHERE id = ?`, [request.params.id]);
   if (!response) return reply.code(404).send({ error: "unknown response" });
-  const answers = loadTranscript(request.params.id);
+  const answers = await loadTranscript(request.params.id);
   return { response, answers };
 });
 
 app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, reply) => {
-  const rows = db
-    .prepare(
-      `SELECT r.id as response_id, r.segment_slug, r.started_at, r.finished_at, r.status,
-              r.source_ref, r.contact_phone, r.contact_email,
-              a.question_number, a.question_kind, a.question_text, a.answer_text
-       FROM responses r
-       LEFT JOIN answers a ON a.response_id = r.id
-       ORDER BY r.started_at ASC, a.question_number ASC`
-    )
-    .all();
+  const rows = await all(
+    `SELECT r.id as response_id, r.segment_slug, r.started_at, r.finished_at, r.status,
+            r.source_ref, r.respondent_name, r.contact_phone, r.contact_email,
+            a.question_number, a.question_kind, a.question_text, a.answer_text
+     FROM responses r
+     LEFT JOIN answers a ON a.response_id = r.id
+     ORDER BY r.started_at ASC, a.question_number ASC`
+  );
 
   const csv = toCsv(
     [
-      "response_id", "segment_slug", "started_at", "finished_at", "status", "source_ref",
+      "response_id", "segment_slug", "started_at", "finished_at", "status", "source_ref", "respondent_name",
       "contact_phone", "contact_email", "question_number", "question_kind", "question_text", "answer_text",
     ],
     rows

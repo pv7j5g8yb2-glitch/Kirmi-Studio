@@ -22,6 +22,12 @@
   #detail .a { color: #333; margin-top: 2px; white-space: pre-wrap; }
   .hidden { display: none; }
   .empty { color: #777; padding: 20px; text-align: center; max-width: 1100px; margin-inline: auto; }
+  #link-gen { max-width: 1100px; margin: 0 auto 20px; background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  #link-gen h2 { font-size: 15px; margin: 0 0 10px; }
+  #link-gen .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  #link-gen select, #link-gen input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+  #link-gen input#ref-input { flex: 1; min-width: 180px; }
+  #link-out { font-size: 13px; background: #fafafa; border-radius: 6px; padding: 8px 10px; margin-top: 10px; word-break: break-all; display: none; }
 </style>
 </head>
 <body>
@@ -33,9 +39,19 @@
     </div>
   </div>
 
+  <div id="link-gen">
+    <h2>Make a tagged link to send someone</h2>
+    <div class="row">
+      <select id="segment-select"></select>
+      <input id="ref-input" type="text" placeholder="Tag, e.g. the WhatsApp number or +353871234567" />
+      <button id="generate-link-btn">Generate</button>
+    </div>
+    <div id="link-out"></div>
+  </div>
+
   <table id="table" class="hidden">
     <thead>
-      <tr><th>Started</th><th>Segment</th><th>Ref</th><th>Status</th><th>Answered</th><th>Currently on / dropped at</th><th>Contact</th></tr>
+      <tr><th>Started</th><th>Segment</th><th>Name</th><th>Ref</th><th>Status</th><th>Answered</th><th>Currently on / dropped at</th><th>Contact</th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
@@ -70,6 +86,7 @@
           '<tr class="row" data-id="' + r.id + '">' +
           "<td>" + new Date(r.started_at).toLocaleString() + "</td>" +
           "<td>" + escapeHtml(r.segment_slug) + "</td>" +
+          "<td>" + escapeHtml(r.respondent_name || "-") + "</td>" +
           "<td>" + escapeHtml(r.source_ref || "-") + "</td>" +
           '<td class="status-' + r.status + '">' + r.status.replace("_", " ") + "</td>" +
           "<td>" + r.answer_count + "</td>" +
@@ -93,6 +110,7 @@
     const header =
       "<h2>Response started " + new Date(r.started_at).toLocaleString() +
       " &middot; " + escapeHtml(r.segment_slug) +
+      (r.respondent_name ? " &middot; " + escapeHtml(r.respondent_name) : "") +
       " &middot; " + r.status.replace("_", " ") +
       (r.source_ref ? " &middot; ref " + escapeHtml(r.source_ref) : "") +
       (contact ? " &middot; " + contact : "") + "</h2>";
@@ -113,6 +131,26 @@
     window.location.href = "/admin/login";
   });
 
+  async function loadSegments() {
+    const res = await fetch("/api/admin/segments");
+    if (!res.ok) return;
+    const data = await res.json();
+    const select = document.getElementById("segment-select");
+    select.innerHTML = data.segments.map((s) => '<option value="' + s.slug + '">' + escapeHtml(s.niche) + "</option>").join("");
+  }
+
+  document.getElementById("generate-link-btn").addEventListener("click", () => {
+    const slug = document.getElementById("segment-select").value;
+    const ref = document.getElementById("ref-input").value.trim();
+    const url = window.location.origin + "/s/" + slug + (ref ? "?ref=" + encodeURIComponent(ref) : "");
+    const out = document.getElementById("link-out");
+    out.style.display = "block";
+    out.textContent = url;
+    navigator.clipboard?.writeText(url).catch(() => {});
+    out.textContent = url + "  (copied)";
+  });
+
+  loadSegments();
   loadResponses();
 </script>
 </body>

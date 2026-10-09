@@ -25,13 +25,18 @@ export function requireAdmin(request, reply, done) {
   done();
 }
 
+// 400 days is the longest a cookie is actually honoured; Chrome and Safari both cap
+// Set-Cookie max-age there regardless of what a server asks for, so this is as close
+// to "stay signed in" as a cookie can get. You will need to log back in about once a year.
+const MAX_COOKIE_AGE_SECONDS = 400 * 24 * 60 * 60;
+
 export function setAdminCookie(reply) {
   reply.setCookie(COOKIE_NAME, "ok", {
     path: "/",
     httpOnly: true,
     sameSite: "strict",
     signed: true,
-    maxAge: 60 * 60 * 12,
+    maxAge: MAX_COOKIE_AGE_SECONDS,
   });
 }
 

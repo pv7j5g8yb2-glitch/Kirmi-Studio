@@ -5,32 +5,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Survey admin</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f7f6f3; margin: 0; padding: 24px; color: #1a1a1a; }
-  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; max-width: 1100px; margin-inline: auto; }
-  h1 { font-size: 20px; margin: 0; }
-  .actions a, .actions button { margin-left: 10px; font-size: 14px; }
-  button, .btn { background: #1a1a1a; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
-  table { width: 100%; max-width: 1100px; margin-inline: auto; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  th, td { text-align: left; padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #eee; }
-  th { background: #fafafa; color: #555; font-weight: 600; }
-  tr.row { cursor: pointer; }
-  tr.row:hover { background: #fafafa; }
-  .status-completed { color: #0a7a2f; }
-  .status-in_progress { color: #b06a00; }
-  #detail { max-width: 1100px; margin: 20px auto 0; background: #fff; border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  #detail .q { font-weight: 600; margin-top: 14px; }
-  #detail .a { color: #333; margin-top: 2px; white-space: pre-wrap; }
-  .hidden { display: none; }
-  .empty { color: #777; padding: 20px; text-align: center; max-width: 1100px; margin-inline: auto; }
-  #link-gen { max-width: 1100px; margin: 0 auto 20px; background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  #link-gen h2 { font-size: 15px; margin: 0 0 10px; }
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f7f6f3; margin: 0; padding: 16px; color: #1a1a1a; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px; flex-wrap: wrap; }
+  h1 { font-size: 19px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .actions { display: flex; gap: 8px; }
+  .actions a, .actions button { font-size: 13px; }
+  button, .btn { background: #1a1a1a; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 14px; }
+  .panel { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 14px; }
   #link-gen .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  #link-gen select, #link-gen input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-  #link-gen input#ref-input { flex: 1; min-width: 180px; }
+  select, input[type="text"] { padding: 9px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #fff; }
+  #link-gen input#ref-input { flex: 1; min-width: 160px; }
   #link-out { font-size: 13px; background: #fafafa; border-radius: 6px; padding: 8px 10px; margin-top: 10px; word-break: break-all; display: none; }
+
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  .controls select { flex: 1; min-width: 130px; }
+  .count-line { font-size: 13px; color: #777; margin: 10px 0 2px; }
+
+  .card { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 10px; cursor: pointer; }
+  .card:hover { background: #fafafa; }
+  .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card-name { font-weight: 600; font-size: 15px; }
+  .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .badge-completed { background: #e6f4ea; color: #0a7a2f; }
+  .badge-in_progress { background: #fdf0db; color: #a06a00; }
+  .card-meta { font-size: 13px; color: #666; margin-top: 3px; }
+  .card-sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .card-dropoff { font-size: 12px; color: #a06a00; margin-top: 6px; }
+
+  #detail { background: #fff; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-top: 14px; }
+  #detail .detail-header { font-size: 14px; color: #555; margin-bottom: 4px; }
+  #detail .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #999; margin: 16px 0 6px; border-top: 1px solid #eee; padding-top: 14px; }
+  #detail .section-label:first-of-type { border-top: none; padding-top: 0; margin-top: 10px; }
+  #detail .q { font-weight: 600; font-size: 14px; margin-top: 10px; }
+  #detail .a { color: #333; margin-top: 2px; white-space: pre-wrap; font-size: 14px; }
+  #detail .a.price { background: #fdf8e8; border-left: 3px solid #d4a800; padding: 6px 10px; border-radius: 4px; }
+  #close-detail { background: #eee; color: #333; margin-bottom: 4px; }
+
+  .hidden { display: none; }
+  .empty { color: #777; padding: 24px; text-align: center; }
 </style>
 </head>
 <body>
+<div class="wrap">
   <div class="topbar">
     <h1>Survey responses</h1>
     <div class="actions">
@@ -39,66 +59,110 @@
     </div>
   </div>
 
-  <div id="link-gen">
+  <div id="link-gen" class="panel">
     <h2>Make a tagged link to send someone</h2>
     <div class="row">
       <select id="segment-select"></select>
-      <input id="ref-input" type="text" placeholder="Tag, e.g. the WhatsApp number or +353871234567" />
+      <input id="ref-input" type="text" placeholder="Tag, e.g. the WhatsApp number" />
       <button id="generate-link-btn">Generate</button>
     </div>
     <div id="link-out"></div>
   </div>
 
-  <table id="table" class="hidden">
-    <thead>
-      <tr><th>Started</th><th>Segment</th><th>Name</th><th>Ref</th><th>Status</th><th>Answered</th><th>Currently on / dropped at</th><th>Contact</th></tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
-  <div id="empty" class="empty hidden">No responses yet.</div>
+  <div class="panel">
+    <div class="controls">
+      <select id="filter-segment"><option value="">All niches</option></select>
+      <select id="filter-status">
+        <option value="">All statuses</option>
+        <option value="completed">Completed</option>
+        <option value="in_progress">In progress / dropped off</option>
+      </select>
+      <select id="filter-contact">
+        <option value="">Any contact</option>
+        <option value="has">Left contact info</option>
+      </select>
+      <select id="sort-by">
+        <option value="started_desc">Newest first</option>
+        <option value="started_asc">Oldest first</option>
+        <option value="answers_desc">Most answered first</option>
+        <option value="status">By status</option>
+      </select>
+    </div>
+  </div>
 
+  <div class="count-line" id="count-line"></div>
+  <div id="list"></div>
+  <div id="empty" class="empty hidden">No responses match these filters.</div>
   <div id="detail" class="hidden"></div>
+</div>
 
 <script>
-  const rowsEl = document.getElementById("rows");
-  const tableEl = document.getElementById("table");
+  const listEl = document.getElementById("list");
   const emptyEl = document.getElementById("empty");
   const detailEl = document.getElementById("detail");
+  const countLineEl = document.getElementById("count-line");
+  const filterSegment = document.getElementById("filter-segment");
+  const filterStatus = document.getElementById("filter-status");
+  const filterContact = document.getElementById("filter-contact");
+  const sortBy = document.getElementById("sort-by");
+
+  let allResponses = [];
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function applyFiltersAndSort() {
+    let rows = allResponses.slice();
+
+    if (filterSegment.value) rows = rows.filter((r) => r.segment_slug === filterSegment.value);
+    if (filterStatus.value) rows = rows.filter((r) => r.status === filterStatus.value);
+    if (filterContact.value === "has") rows = rows.filter((r) => r.contact_phone || r.contact_email);
+
+    const sort = sortBy.value;
+    if (sort === "started_asc") rows.sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+    else if (sort === "answers_desc") rows.sort((a, b) => b.answer_count - a.answer_count);
+    else if (sort === "status") rows.sort((a, b) => a.status.localeCompare(b.status));
+    else rows.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+
+    renderList(rows);
+  }
+
+  function renderList(rows) {
+    countLineEl.textContent = rows.length + " of " + allResponses.length + " response" + (allResponses.length === 1 ? "" : "s");
+    if (!rows.length) {
+      listEl.innerHTML = "";
+      emptyEl.classList.remove("hidden");
+      return;
+    }
+    emptyEl.classList.add("hidden");
+    listEl.innerHTML = rows
+      .map((r) => {
+        const dropOff = r.status === "completed" ? "" : '<div class="card-dropoff">Dropped at Q' + r.current_question_number + ": " + escapeHtml(r.current_question_text) + "</div>";
+        const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ");
+        const sub = [r.source_ref ? "ref " + escapeHtml(r.source_ref) : "", contact].filter(Boolean).join(" &middot; ");
+        return (
+          '<div class="card" data-id="' + r.id + '">' +
+          '<div class="card-top"><span class="card-name">' + escapeHtml(r.respondent_name || "Unnamed") + '</span>' +
+          '<span class="badge badge-' + r.status + '">' + r.status.replace("_", " ") + "</span></div>" +
+          '<div class="card-meta">' + escapeHtml(r.segment_slug) + " &middot; " + new Date(r.started_at).toLocaleString() + " &middot; " + r.answer_count + " answered</div>" +
+          (sub ? '<div class="card-sub">' + sub + "</div>" : "") +
+          dropOff +
+          "</div>"
+        );
+      })
+      .join("");
+    document.querySelectorAll(".card").forEach((card) => {
+      card.addEventListener("click", () => loadDetail(card.dataset.id));
+    });
   }
 
   async function loadResponses() {
     const res = await fetch("/api/admin/responses");
     if (res.status === 401) { window.location.href = "/admin/login"; return; }
     const data = await res.json();
-    if (!data.responses.length) {
-      emptyEl.classList.remove("hidden");
-      return;
-    }
-    tableEl.classList.remove("hidden");
-    rowsEl.innerHTML = data.responses
-      .map((r) => {
-        const dropOff = r.status === "completed" ? "-" : "Q" + r.current_question_number + ": " + escapeHtml(r.current_question_text);
-        const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ") || "-";
-        return (
-          '<tr class="row" data-id="' + r.id + '">' +
-          "<td>" + new Date(r.started_at).toLocaleString() + "</td>" +
-          "<td>" + escapeHtml(r.segment_slug) + "</td>" +
-          "<td>" + escapeHtml(r.respondent_name || "-") + "</td>" +
-          "<td>" + escapeHtml(r.source_ref || "-") + "</td>" +
-          '<td class="status-' + r.status + '">' + r.status.replace("_", " ") + "</td>" +
-          "<td>" + r.answer_count + "</td>" +
-          "<td>" + dropOff + "</td>" +
-          "<td>" + contact + "</td>" +
-          "</tr>"
-        );
-      })
-      .join("");
-    document.querySelectorAll("tr.row").forEach((row) => {
-      row.addEventListener("click", () => loadDetail(row.dataset.id));
-    });
+    allResponses = data.responses;
+    applyFiltersAndSort();
   }
 
   async function loadDetail(id) {
@@ -107,22 +171,44 @@
     const data = await res.json();
     const r = data.response;
     const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ");
+    const metaBits = [
+      escapeHtml(r.segment_slug),
+      new Date(r.started_at).toLocaleString(),
+      r.status.replace("_", " "),
+      r.source_ref ? "ref " + escapeHtml(r.source_ref) : "",
+      contact,
+    ].filter(Boolean);
     const header =
-      "<h2>Response started " + new Date(r.started_at).toLocaleString() +
-      " &middot; " + escapeHtml(r.segment_slug) +
-      (r.respondent_name ? " &middot; " + escapeHtml(r.respondent_name) : "") +
-      " &middot; " + r.status.replace("_", " ") +
-      (r.source_ref ? " &middot; ref " + escapeHtml(r.source_ref) : "") +
-      (contact ? " &middot; " + contact : "") + "</h2>";
-    const qa = data.answers
-      .map((a) => '<div class="q">Q' + a.number + " (" + a.kind + "): " + escapeHtml(a.text) + '</div><div class="a">' + escapeHtml(a.answer) + "</div>")
-      .join("");
+      '<button id="close-detail">&larr; Back to list</button>' +
+      "<h2>" + escapeHtml(r.respondent_name || "Unnamed respondent") + "</h2>" +
+      '<div class="detail-header">' + metaBits.join(" &middot; ") + "</div>";
+
+    const renderQA = (list) =>
+      list
+        .map(
+          (a) =>
+            '<div class="q">Q' + a.number + ": " + escapeHtml(a.text) + '</div><div class="a' + (a.number === 5 ? " price" : "") + '">' + escapeHtml(a.answer) + "</div>"
+        )
+        .join("");
+
+    const baseline = data.answers.filter((a) => a.kind === "baseline");
+    const followups = data.answers.filter((a) => a.kind === "followup");
+
     const dropOff =
       r.status === "in_progress"
-        ? '<div class="q">Dropped at Q' + r.current_question_number + ": " + escapeHtml(r.current_question_text) + "</div>"
+        ? '<div class="section-label">Dropped off here</div><div class="q">Q' + r.current_question_number + ": " + escapeHtml(r.current_question_text) + "</div>"
         : "";
-    detailEl.innerHTML = header + qa + dropOff;
+
+    detailEl.innerHTML =
+      header +
+      (baseline.length ? '<div class="section-label">Baseline (same for everyone in this niche)</div>' + renderQA(baseline) : "") +
+      (followups.length ? '<div class="section-label">Adaptive follow-ups</div>' + renderQA(followups) : "") +
+      dropOff;
     detailEl.classList.remove("hidden");
+    document.getElementById("close-detail").addEventListener("click", () => {
+      detailEl.classList.add("hidden");
+      detailEl.innerHTML = "";
+    });
     detailEl.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -135,8 +221,8 @@
     const res = await fetch("/api/admin/segments");
     if (!res.ok) return;
     const data = await res.json();
-    const select = document.getElementById("segment-select");
-    select.innerHTML = data.segments.map((s) => '<option value="' + s.slug + '">' + escapeHtml(s.niche) + "</option>").join("");
+    document.getElementById("segment-select").innerHTML = data.segments.map((s) => '<option value="' + s.slug + '">' + escapeHtml(s.niche) + "</option>").join("");
+    filterSegment.innerHTML = '<option value="">All niches</option>' + data.segments.map((s) => '<option value="' + s.slug + '">' + escapeHtml(s.niche) + "</option>").join("");
   }
 
   document.getElementById("generate-link-btn").addEventListener("click", () => {
@@ -149,6 +235,8 @@
     navigator.clipboard?.writeText(url).catch(() => {});
     out.textContent = url + "  (copied)";
   });
+
+  [filterSegment, filterStatus, filterContact, sortBy].forEach((el) => el.addEventListener("change", applyFiltersAndSort));
 
   loadSegments();
   loadResponses();

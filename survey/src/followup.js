@@ -34,6 +34,16 @@ Rules:
 const GROQ_JSON_INSTRUCTION = `\n\nRespond with only a JSON object of exactly this shape, no other text before or after it:
 {"continue": true or false, "question": "the exact follow-up question text" or null}`;
 
+// Hard backstop, independent of whatever the prompt says: a model can ignore an
+// instruction, this cannot. If a generated question suggests any figure near money or
+// a billing period, it never reaches a respondent, no matter which provider produced it.
+const PRICE_PATTERN =
+  /[$€£¥]\s?\d|\d+\s*(?:dollars?|euros?|pounds?|usd|eur|gbp|bucks)\b|\b\d[\d,]*\s*(?:\/|\s+per\s+|\s+a\s+)\s*(?:month|mo\b|year|yr\b)/i;
+
+function suggestsAPrice(question) {
+  return typeof question === "string" && PRICE_PATTERN.test(question);
+}
+
 function buildTranscriptText(niche, transcript) {
   const lines = transcript.map((t) => `Q${t.number}: ${t.text}\nA${t.number}: ${t.answer}`);
   return `Niche: ${niche}\n\n${lines.join("\n\n")}`;
@@ -101,9 +111,7 @@ function decideDeterministic({ transcript }) {
   return { continue: true, question: DETERMINISTIC_FOLLOWUPS[followupsAsked] };
 }
 
-export async function decideNextQuestion({ segment, transcript, remaining }) {
-  if (remaining <= 0) return { continue: false, question: null };
-
+async function decideWithProvider({ segment, transcript, remaining }) {
   if (PROVIDER === "groq") {
     try {
       return await decideWithGroq({ segment, transcript, remaining });
@@ -112,9 +120,21 @@ export async function decideNextQuestion({ segment, transcript, remaining }) {
       return decideDeterministic({ transcript });
     }
   }
-
   if (PROVIDER === "anthropic") return decideWithAnthropic({ segment, transcript, remaining });
   return decideDeterministic({ transcript });
+}
+
+export async function decideNextQuestion({ segment, transcript, remaining }) {
+  if (remaining <= 0) return { continue: false, question: null };
+
+  const decision = await decideWithProvider({ segment, transcript, remaining });
+
+  if (decision.question && suggestsAPrice(decision.question)) {
+    console.error("Blocked a generated follow-up that suggested a price, falling back for this turn:", decision.question);
+    return decideDeterministic({ transcript });
+  }
+
+  return decision;
 }
 
 export const followupProvider = PROVIDER;

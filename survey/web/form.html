@@ -67,15 +67,6 @@
   .error { color: #b00020; font-size: 14px; margin-top: 10px; }
   .thanks { line-height: 1.6; }
   .hidden { display: none; }
-  .skip-link {
-    display: inline-block;
-    margin-top: 10px;
-    margin-left: 10px;
-    color: #888;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: underline;
-  }
   input[type="text"] {
     width: 100%;
     font-size: 16px;
@@ -116,8 +107,8 @@
       <p class="progress">Almost there</p>
       <h1>What should I call you?</h1>
       <input id="name-input" type="text" placeholder="First name" />
+      <div id="name-error" class="error hidden">Just your first name, go on.</div>
       <button id="name-continue-btn">Continue</button>
-      <span class="skip-link" id="name-skip-btn">Skip</span>
     </div>
 
     <div id="hello-screen" class="hidden">
@@ -347,17 +338,13 @@
   document.getElementById("name-continue-btn").addEventListener("click", () => {
     const name = nameInput.value.trim();
     if (!name) {
-      nameScreen.classList.add("hidden");
-      begin();
+      document.getElementById("name-error").classList.remove("hidden");
+      nameInput.focus();
       return;
     }
+    document.getElementById("name-error").classList.add("hidden");
     respondentName = name;
     showHelloThen(begin);
-  });
-
-  document.getElementById("name-skip-btn").addEventListener("click", () => {
-    nameScreen.classList.add("hidden");
-    begin();
   });
 
   if (!slug) {

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Survey admin</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f7f6f3; margin: 0; padding: 24px; color: #1a1a1a; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; max-width: 1100px; margin-inline: auto; }
+  h1 { font-size: 20px; margin: 0; }
+  .actions a, .actions button { margin-left: 10px; font-size: 14px; }
+  button, .btn { background: #1a1a1a; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+  table { width: 100%; max-width: 1100px; margin-inline: auto; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  th, td { text-align: left; padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #eee; }
+  th { background: #fafafa; color: #555; font-weight: 600; }
+  tr.row { cursor: pointer; }
+  tr.row:hover { background: #fafafa; }
+  .status-completed { color: #0a7a2f; }
+  .status-in_progress { color: #b06a00; }
+  #detail { max-width: 1100px; margin: 20px auto 0; background: #fff; border-radius: 10px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  #detail .q { font-weight: 600; margin-top: 14px; }
+  #detail .a { color: #333; margin-top: 2px; white-space: pre-wrap; }
+  .hidden { display: none; }
+  .empty { color: #777; padding: 20px; text-align: center; max-width: 1100px; margin-inline: auto; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Survey responses</h1>
+    <div class="actions">
+      <a class="btn" href="/api/admin/export.csv">Export CSV</a>
+      <button id="logout-btn">Log out</button>
+    </div>
+  </div>
+
+  <table id="table" class="hidden">
+    <thead>
+      <tr><th>Started</th><th>Segment</th><th>Status</th><th>Answered</th><th>Currently on / dropped at</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="empty" class="empty hidden">No responses yet.</div>
+
+  <div id="detail" class="hidden"></div>
+
+<script>
+  const rowsEl = document.getElementById("rows");
+  const tableEl = document.getElementById("table");
+  const emptyEl = document.getElementById("empty");
+  const detailEl = document.getElementById("detail");
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  async function loadResponses() {
+    const res = await fetch("/api/admin/responses");
+    if (res.status === 401) { window.location.href = "/admin/login"; return; }
+    const data = await res.json();
+    if (!data.responses.length) {
+      emptyEl.classList.remove("hidden");
+      return;
+    }
+    tableEl.classList.remove("hidden");
+    rowsEl.innerHTML = data.responses
+      .map((r) => {
+        const dropOff = r.status === "completed" ? "-" : "Q" + r.current_question_number + ": " + escapeHtml(r.current_question_text);
+        return (
+          '<tr class="row" data-id="' + r.id + '">' +
+          "<td>" + new Date(r.started_at).toLocaleString() + "</td>" +
+          "<td>" + escapeHtml(r.segment_slug) + "</td>" +
+          '<td class="status-' + r.status + '">' + r.status.replace("_", " ") + "</td>" +
+          "<td>" + r.answer_count + "</td>" +
+          "<td>" + dropOff + "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+    document.querySelectorAll("tr.row").forEach((row) => {
+      row.addEventListener("click", () => loadDetail(row.dataset.id));
+    });
+  }
+
+  async function loadDetail(id) {
+    const res = await fetch("/api/admin/responses/" + id);
+    if (!res.ok) return;
+    const data = await res.json();
+    const r = data.response;
+    const header =
+      "<h2>Response started " + new Date(r.started_at).toLocaleString() +
+      " &middot; " + escapeHtml(r.segment_slug) +
+      " &middot; " + r.status.replace("_", " ") + "</h2>";
+    const qa = data.answers
+      .map((a) => '<div class="q">Q' + a.number + " (" + a.kind + "): " + escapeHtml(a.text) + '</div><div class="a">' + escapeHtml(a.answer) + "</div>")
+      .join("");
+    const dropOff =
+      r.status === "in_progress"
+        ? '<div class="q">Dropped at Q' + r.current_question_number + ": " + escapeHtml(r.current_question_text) + "</div>"
+        : "";
+    detailEl.innerHTML = header + qa + dropOff;
+    detailEl.classList.remove("hidden");
+    detailEl.scrollIntoView({ behavior: "smooth" });
+  }
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await fetch("/admin/logout", { method: "POST" });
+    window.location.href = "/admin/login";
+  });
+
+  loadResponses();
+</script>
+</body>
+</html>

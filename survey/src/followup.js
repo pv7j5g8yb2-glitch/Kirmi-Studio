@@ -16,9 +16,10 @@ const DETERMINISTIC_FOLLOWUPS = [
   "If you did not have to deal with that at all, what would you do with the time instead?",
 ];
 
-// At least this many follow-ups get asked before the model is allowed to stop early,
-// so a respondent who gives a tidy, complete-sounding baseline still gets real depth,
-// without forcing a follow-up onto a topic that genuinely has nothing left to add.
+// A target, not a forced floor: push toward asking at least this many follow-ups when
+// there is genuinely more worth asking, so a tidy-looking baseline still gets real depth.
+// Never worth enforcing in code, since the only way to force a count past what the
+// answers actually support is to repeat a question, which is worse than stopping short.
 const MINIMUM_FOLLOWUPS = 3;
 
 const SYSTEM_PROMPT = `You are running a short product-market-fit research survey for
@@ -34,7 +35,7 @@ Rules:
 - If you cannot come up with a question that is genuinely different in substance from every question already in the transcript, below, baseline or follow-up, stop instead (continue: false). A respondent who has already dodged the same ask twice is not going to answer a third rephrasing of it, stopping cleanly beats repeating yourself.
 - Ask exactly one question at a time, plain and specific, never multiple questions in one. Joining two asks with "and" is still two questions, split them and ask the more important half now, the other later if it is still needed.
 - Stop as soon as pain, frequency, cost, and willingness to pay are all reasonably clear, do not pad the survey out for its own sake.
-- Never pitch, describe, or mention any product or company. This is research only.
+- Never pitch, describe, or mention any product or company. This is research only. This includes hypothetically: "if something fixed this properly" is fine, "a tool that automatically collects X and eliminates Y" is not, that is describing a product's features. A question that describes what a solution would do is a pitch wearing a question mark.
 - Never suggest a specific price or number when asking about willingness to pay, let them state their own. Naming a figure anchors their answer and corrupts the signal.
 - Never use em dashes or en dashes in the question text.`;
 
@@ -51,6 +52,17 @@ function suggestsAPrice(question) {
   return typeof question === "string" && PRICE_PATTERN.test(question);
 }
 
+// Same idea as the price guard: a question that describes what a hypothetical solution
+// does ("a tool that automatically collects...") is a pitch, not research. "If a tool
+// could save you time, what would you pay" is fine, it never describes a feature, so this
+// only matches the "noun + that/which + verb" shape that actually spells one out.
+const PRODUCT_DESCRIPTION_PATTERN =
+  /\b(?:a|an)\s+(?:solution|tool|product|service|app|platform|system)\s+(?:that|which)\b|\b(?:adopt|use|try|pay for)\s+(?:a|an)\s+(?:solution|tool|product|service|app|platform|system)\b/i;
+
+function describesAProduct(question) {
+  return typeof question === "string" && PRODUCT_DESCRIPTION_PATTERN.test(question);
+}
+
 function buildTranscriptText(niche, transcript) {
   const lines = transcript.map((t) => `Q${t.number}: ${t.text}\nA${t.number}: ${t.answer}`);
   return `Niche: ${niche}\n\n${lines.join("\n\n")}`;
@@ -59,9 +71,9 @@ function buildTranscriptText(niche, transcript) {
 function buildUserMessage(segment, transcript, remaining, followupsAsked) {
   const base = `${buildTranscriptText(segment.niche, transcript)}\n\nYou have at most ${remaining} more question(s) left in this survey, including this one if you ask it.`;
   if (followupsAsked < MINIMUM_FOLLOWUPS) {
-    return `${base} You have only asked ${followupsAsked} follow-up question(s) so far, and at least ${MINIMUM_FOLLOWUPS} are required before you are allowed to stop. Stopping now is not an option yet, you must continue: true and write a genuinely useful next question, picking whichever of the four signals (pain, frequency, cost, willingness to pay) is least developed so far, even if the others already look reasonably clear.`;
+    return `${base} You have only asked ${followupsAsked} follow-up question(s) so far, aim for at least ${MINIMUM_FOLLOWUPS}. The four core signals already looking reasonably clear is not by itself a reason to stop this early, there is almost always more worth learning, for example: how this affects their capacity to take on more clients or deals, a specific recent incident and what it cost them, or how this compares at their busiest moments versus normal. Make a real attempt at one of these before concluding there is nothing left, but never by describing what a future solution would do, see the rule on that above. Only stop below the target (continue: false) if, after genuinely trying, you truly cannot think of a question that is substantively different from everything already asked, below. A repeated question, reworded or not, is worse than a short survey, and so is one that describes a product.`;
   }
-  return `${base} You have asked the required minimum of ${MINIMUM_FOLLOWUPS} follow-ups already, so stopping now is a real option if nothing left would add genuine signal. Decide now.`;
+  return `${base} You have reached the usual target of ${MINIMUM_FOLLOWUPS} follow-ups, so stopping now is a real option if nothing left would add genuine signal. Decide now.`;
 }
 
 async function decideWithAnthropic({ segment, transcript, remaining, followupsAsked }) {
@@ -150,14 +162,15 @@ export async function decideNextQuestion({ segment, transcript, remaining }) {
     return decideDeterministic({ transcript });
   }
 
-  // Hard floor, independent of the prompt: if the model still tried to stop before the
-  // minimum despite being told not to, it does not get to. A respondent never ends up
-  // with fewer than MINIMUM_FOLLOWUPS just because a smaller model ignored an instruction.
-  if (followupsAsked < MINIMUM_FOLLOWUPS && (!decision.continue || !decision.question)) {
-    console.error(`Model tried to stop at ${followupsAsked} follow-ups, below the minimum of ${MINIMUM_FOLLOWUPS}, forcing a fallback question instead.`);
+  if (decision.question && describesAProduct(decision.question)) {
+    console.error("Blocked a generated follow-up that described a hypothetical product, falling back for this turn:", decision.question);
     return decideDeterministic({ transcript });
   }
 
+  // No code-level floor here on purpose. Forcing a question when the model has already
+  // said it has nothing substantively new to ask would mean injecting one of the fixed
+  // fallback questions, which can itself repeat something already covered, the exact
+  // failure this is meant to avoid. Stopping early and honestly beats padding.
   return decision;
 }
 

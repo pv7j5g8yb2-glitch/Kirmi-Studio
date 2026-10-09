@@ -25,6 +25,8 @@ frequency, cost, or willingness to pay, and if so, write that one question.
 Rules:
 - Dig into whichever baseline answer was vaguest or most promising, do not repeat a question already asked, including asking for the same fact in different words.
 - If the last one or two answers dodged a direct ask (no real number, no real specifics), that approach is not working, switch to a different angle or a different signal entirely rather than re-asking for the same thing another way.
+- Once a signal (pain, frequency, cost, or willingness to pay) already has a clear, usable answer, leave it. Do not spend another question refining a number that is already good enough, spend it on whichever of the four signals is still unclear instead.
+- If you cannot come up with a question that is genuinely different in substance from every question already in the transcript, below, baseline or follow-up, stop instead (continue: false). A respondent who has already dodged the same ask twice is not going to answer a third rephrasing of it, stopping cleanly beats repeating yourself.
 - Ask exactly one question at a time, plain and specific, never multiple questions in one.
 - Stop as soon as pain, frequency, cost, and willingness to pay are all reasonably clear, do not pad the survey out for its own sake.
 - Never pitch, describe, or mention any product or company. This is research only.

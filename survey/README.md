@@ -41,12 +41,18 @@ the ref on every row of the response list.
 
 ## Adaptive follow-ups
 
-With `ANTHROPIC_API_KEY` unset, follow-ups run in a fixed deterministic mode, useful for
-testing the flow end to end without burning API calls. Set `ANTHROPIC_API_KEY` to have
-Claude read each respondent's baseline answers and decide, one question at a time,
+Set `GROQ_API_KEY` (free, from console.groq.com) to get real adaptive follow-ups. A
+model reads each respondent's baseline answers and decides, one question at a time,
 whether a follow-up is worth asking and what it should be, stopping once pain,
 frequency, cost, and willingness to pay are clear or the 10 question cap is hit,
-whichever comes first.
+whichever comes first. If a Groq request ever fails mid-survey, that one turn falls
+back to a fixed follow-up instead of breaking the respondent's form.
+
+With no `GROQ_API_KEY` set, follow-ups run in that same fixed deterministic mode for
+every respondent, useful for testing the flow end to end without any API calls.
+
+Anthropic is also supported (`ANTHROPIC_API_KEY`) if you want Claude's follow-ups
+specifically, there's just no free tier for it, Groq is the free option.
 
 ### Optional contact capture
 

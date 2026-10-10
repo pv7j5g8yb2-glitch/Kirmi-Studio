@@ -5,9 +5,9 @@ export const segments = {
   bookkeepers: {
     niche: "bookkeepers",
     intro:
-      "Ten quick questions, no more, about how bookkeeping work actually goes for you day to day. There is nothing to sign up for and nothing being sold here, this is pure research.",
+      "Ten quick questions, no more, about how bookkeeping work actually goes for you day to day. There's nothing to sign up for and nothing being sold here, this is pure research.",
     baseline: [
-      "What is the part of a typical client's bookkeeping that eats the most of your time, and shouldn't?",
+      "What is the part of a typical client’s bookkeeping that eats the most of your time, and shouldn’t?",
       "Take me through exactly how you handle that today, step by step.",
       "Does that happen on every client, every month, or mostly around certain deadlines like VAT returns or year end?",
       "What is that actually costing you: in hours each week, in late nights, or in clients you have had to turn down?",
@@ -17,9 +17,9 @@ export const segments = {
   "real-estate-agents": {
     niche: "real estate agents and brokers",
     intro:
-      "Ten quick questions, no more, about how handling listings and enquiries actually goes for you day to day. There is nothing to sign up for and nothing being sold here, this is pure research.",
+      "Ten quick questions, no more, about how handling listings and enquiries actually goes for you day to day. There's nothing to sign up for and nothing being sold here, this is pure research.",
     baseline: [
-      "What is the part of handling a listing or a client enquiry that eats the most of your time, and shouldn't?",
+      "What is the part of handling a listing or a client enquiry that eats the most of your time, and shouldn’t?",
       "Take me through exactly how you handle that today, step by step.",
       "Does that happen on every enquiry, every listing, or mostly at certain points, like after hours or around viewings?",
       "What is that actually costing you: in hours each week, in missed enquiries, or in deals that went cold?",

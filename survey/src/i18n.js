@@ -55,6 +55,17 @@ export const SOURCE_BUNDLE = {
   ),
 };
 
+// True once every key SOURCE_BUNDLE currently defines is present in a cached bundle. A
+// cached bundle predating a later addition to SOURCE_BUNDLE.ui (a new button, a new
+// screen) is missing that key, and would otherwise silently serve English for just that
+// one string forever, the cache never knowing SOURCE_BUNDLE grew. Treating that as stale
+// and regenerating is the only way a cached bundle keeps up with new UI without a manual
+// cache-clearing step every time a string gets added.
+function isStale(parsed) {
+  if (!parsed || !parsed.ui || !parsed.segments) return true;
+  return Object.keys(SOURCE_BUNDLE.ui).some((key) => !(key in parsed.ui));
+}
+
 // Static content (UI chrome plus each niche's title, intro, and baseline questions) is
 // translated once per language and cached, rather than re-translated on every request:
 // it never changes, so every respondent in the same language sees identical, reviewable
@@ -65,7 +76,8 @@ export async function getBundle(language) {
   const cached = await get(`SELECT bundle FROM translation_bundles WHERE language = ?`, [language]);
   if (cached) {
     try {
-      return JSON.parse(cached.bundle);
+      const parsed = JSON.parse(cached.bundle);
+      if (!isStale(parsed)) return parsed;
     } catch {
       // Fall through and regenerate if the cached row is somehow corrupt.
     }

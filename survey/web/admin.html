@@ -5,52 +5,207 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Survey admin</title>
 <style>
-  :root { color-scheme: light; }
+  :root {
+    color-scheme: light;
+    --ink: #1a1a1a;
+    --ink-soft: #52535a;
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-edge: rgba(255, 255, 255, 0.95);
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 999px;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f7f6f3; margin: 0; padding: 16px; color: #1a1a1a; }
+  body {
+    font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-optical-sizing: auto;
+    margin: 0;
+    padding: 16px;
+    color: var(--ink);
+    min-height: 100vh;
+    background:
+      radial-gradient(1000px 600px at 8% -10%, rgba(255, 214, 196, 0.2), transparent 55%),
+      radial-gradient(900px 700px at 108% 6%, rgba(196, 214, 255, 0.18), transparent 55%),
+      radial-gradient(800px 600px at 50% 120%, rgba(205, 240, 222, 0.14), transparent 55%),
+      #f5f4f1;
+    background-attachment: fixed;
+  }
   .wrap { max-width: 720px; margin: 0 auto; }
   .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px; flex-wrap: wrap; }
-  h1 { font-size: 19px; margin: 0; }
-  h2 { font-size: 15px; margin: 0 0 10px; }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; margin: 0 0 10px; }
   .actions { display: flex; gap: 8px; }
-  .actions a, .actions button { font-size: 13px; }
-  button, .btn { background: #1a1a1a; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 14px; }
-  .panel { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 14px; }
+  .actions a, .actions button { font-size: 13px; padding: 8px 14px; }
+
+  button, .btn {
+    background: linear-gradient(180deg, #2c2c2f, #141416);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.12), 0 8px 18px -10px rgba(0,0,0,0.4);
+    transition: transform 140ms cubic-bezier(.2,.8,.3,1), box-shadow 140ms ease, opacity 140ms ease;
+  }
+  button:active, .btn:active { transform: scale(0.96); box-shadow: 0 1px 1px rgba(0,0,0,0.12); }
+  button:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+  /* Secondary / light glass buttons: top-bar utilities and the detail view's close button. */
+  .actions a, .actions button, #close-detail {
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--ink);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: none;
+  }
+  .actions a:active, .actions button:active, #close-detail:active { background: rgba(255, 255, 255, 0.95); }
+  #close-detail { margin-bottom: 4px; }
+
+  .panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: 0 16px 40px -20px rgba(20,20,30,0.24), 0 1px 6px rgba(20,20,30,0.05);
+    margin-bottom: 14px;
+  }
   #link-gen .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  select, input[type="text"] { padding: 9px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #fff; }
+
+  select, input[type="text"] {
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--ink);
+    transition: box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+  }
+  select:focus, input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(0, 0, 0, 0.16);
+    box-shadow: 0 0 0 4px rgba(20, 20, 30, 0.08);
+  }
   #link-gen input#ref-input { flex: 1; min-width: 160px; }
-  #link-out { font-size: 13px; background: #fafafa; border-radius: 6px; padding: 8px 10px; margin-top: 10px; word-break: break-all; display: none; }
-  .chip { background: #fff; color: #1a1a1a; border: 1px solid #ddd; border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; }
-  .chip:hover { background: #f0f0f0; }
-  .chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-  #delete-response-btn { background: #fff; color: #b00020; border: 1px solid #f0c0c0; margin-left: 8px; }
+  #link-out {
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-md);
+    padding: 9px 12px;
+    margin-top: 10px;
+    word-break: break-all;
+    display: none;
+  }
+
+  .chip {
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--ink);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: transform 140ms cubic-bezier(.2,.8,.3,1), background 140ms ease;
+  }
+  .chip:hover { background: rgba(255, 255, 255, 0.95); }
+  .chip:active { transform: scale(0.95); }
+  .chip.active { background: linear-gradient(180deg, #2c2c2f, #141416); color: #fff; border-color: transparent; }
+
+  #delete-response-btn {
+    background: rgba(255, 232, 232, 0.85);
+    color: #b00020;
+    border: 1px solid rgba(176, 0, 32, 0.18);
+    box-shadow: none;
+    margin-left: 8px;
+  }
+  #delete-response-btn:active { background: rgba(255, 215, 215, 0.95); }
 
   .controls { display: flex; gap: 8px; flex-wrap: wrap; }
   .controls select { flex: 1; min-width: 130px; }
-  .count-line { font-size: 13px; color: #777; margin: 10px 0 2px; }
+  .count-line { font-size: 13px; letter-spacing: 0.01em; color: var(--ink-soft); margin: 10px 0 2px; }
 
-  .card { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 10px; cursor: pointer; }
-  .card:hover { background: #fafafa; }
+  /* List cards stay close to opaque on purpose: a long scrolling list is read, not admired,
+     and stacking blur under many repeated cards would both hurt legibility and cost more
+     than it's worth to render. The glass treatment is reserved for the few structural
+     surfaces above (panels, detail view), matching material weight to hierarchy. */
+  .card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    box-shadow: 0 1px 2px rgba(20,20,30,0.05), 0 1px 1px rgba(20,20,30,0.03);
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 120ms cubic-bezier(.2,.8,.3,1), background 120ms ease;
+  }
+  .card:hover { background: #fff; }
+  .card:active { transform: scale(0.99); background: #fff; }
   .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-  .card-name { font-weight: 600; font-size: 15px; }
-  .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .card-name { font-weight: 600; font-size: 15px; letter-spacing: -0.005em; }
+  .badge { font-size: 12px; font-weight: 600; letter-spacing: 0.01em; padding: 2px 9px; border-radius: var(--radius-sm); white-space: nowrap; }
   .badge-completed { background: #e6f4ea; color: #0a7a2f; }
   .badge-in_progress { background: #fdf0db; color: #a06a00; }
-  .card-meta { font-size: 13px; color: #666; margin-top: 3px; }
+  .card-meta { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
   .card-sub { font-size: 12px; color: #888; margin-top: 4px; }
   .card-dropoff { font-size: 12px; color: #a06a00; margin-top: 6px; }
 
-  #detail { background: #fff; border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-top: 14px; }
-  #detail .detail-header { font-size: 14px; color: #555; margin-bottom: 4px; }
-  #detail .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #999; margin: 16px 0 6px; border-top: 1px solid #eee; padding-top: 14px; }
+  #detail {
+    background: var(--glass-bg);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: 0 16px 40px -20px rgba(20,20,30,0.24), 0 1px 6px rgba(20,20,30,0.05);
+    margin-top: 14px;
+  }
+  #detail .detail-header { font-size: 14px; color: var(--ink-soft); margin-bottom: 4px; }
+  #detail .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin: 16px 0 6px; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 14px; }
   #detail .section-label:first-of-type { border-top: none; padding-top: 0; margin-top: 10px; }
-  #detail .q { font-weight: 600; font-size: 14px; margin-top: 10px; }
+  #detail .q { font-weight: 600; font-size: 14px; letter-spacing: -0.005em; margin-top: 10px; }
   #detail .a { color: #333; margin-top: 2px; white-space: pre-wrap; font-size: 14px; }
-  #detail .a.price { background: #fdf8e8; border-left: 3px solid #d4a800; padding: 6px 10px; border-radius: 4px; }
-  #close-detail { background: #eee; color: #333; margin-bottom: 4px; }
+  #detail .a.price { background: rgba(253, 248, 232, 0.9); border-left: 3px solid #d4a800; padding: 6px 10px; border-radius: 6px; }
 
   .hidden { display: none; }
-  .empty { color: #777; padding: 24px; text-align: center; }
+  .empty { color: var(--ink-soft); padding: 24px; text-align: center; }
+
+  .panel, #detail { animation: materialize 380ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  @keyframes materialize {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel, #detail { animation: reduced-fade 160ms ease both; }
+    @keyframes reduced-fade { from { opacity: 0; } to { opacity: 1; } }
+    button, .btn, .card, .chip { transition: opacity 120ms ease; }
+    button:active, .btn:active, .card:active, .chip:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    body { background: #f5f4f1; }
+    .panel, #detail { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: rgba(0,0,0,0.1); }
+    select, input[type="text"], #link-out { background: #fff; }
+    .actions a, .actions button, #close-detail { background: #fff; }
+    .card { background: #fff; }
+  }
+  @media (prefers-contrast: more) {
+    .panel, #detail, .card { background: #fff; border: 1px solid #000; box-shadow: none; }
+    button, .btn { background: #000; }
+    .actions a, .actions button, #close-detail { background: #fff; border: 1px solid #000; }
+    #delete-response-btn { background: #fff; border: 1px solid #b00020; }
+  }
 </style>
 </head>
 <body>
@@ -102,6 +257,9 @@
 </div>
 
 <script>
+  // iOS Safari only runs :active styles when a touch listener exists somewhere in the page.
+  document.body.addEventListener("touchstart", function () {}, { passive: true });
+
   const listEl = document.getElementById("list");
   const emptyEl = document.getElementById("empty");
   const detailEl = document.getElementById("detail");

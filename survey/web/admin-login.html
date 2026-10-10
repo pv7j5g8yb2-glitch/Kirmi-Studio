@@ -5,14 +5,115 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Survey admin</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f7f6f3; display: flex; justify-content: center; padding: 60px 16px; }
-  .card { width: 100%; max-width: 360px; background: #fff; border-radius: 12px; padding: 28px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  h1 { font-size: 18px; margin: 0 0 16px; }
-  input { width: 100%; font-size: 16px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-  button, .btn { margin-top: 12px; width: 100%; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 15px; cursor: pointer; text-decoration: none; display: block; box-sizing: border-box; text-align: center; }
-  #home-btn { background: #fff; color: #1a1a1a; border: 1px solid #ddd; }
-  .error { color: #b00020; font-size: 14px; margin-top: 10px; }
+  :root {
+    color-scheme: light;
+    --ink: #1a1a1a;
+    --ink-soft: #52535a;
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-edge: rgba(255, 255, 255, 0.95);
+    --radius-lg: 24px;
+    --radius-md: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-optical-sizing: auto;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 60px 16px;
+    min-height: 100vh;
+    background:
+      radial-gradient(1000px 600px at 8% -10%, rgba(255, 214, 196, 0.22), transparent 55%),
+      radial-gradient(900px 700px at 108% 10%, rgba(196, 214, 255, 0.2), transparent 55%),
+      radial-gradient(800px 600px at 50% 115%, rgba(205, 240, 222, 0.16), transparent 55%),
+      #f5f4f1;
+    background-attachment: fixed;
+  }
+  .card {
+    width: 100%;
+    max-width: 360px;
+    height: fit-content;
+    background: var(--glass-bg);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: 0 20px 60px -24px rgba(20,20,30,0.28), 0 2px 10px rgba(20,20,30,0.06);
+    animation: materialize 380ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 16px; }
+  input {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-md);
+    box-sizing: border-box;
+    transition: box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+  }
+  input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(0, 0, 0, 0.16);
+    box-shadow: 0 0 0 4px rgba(20, 20, 30, 0.08);
+  }
+  button, .btn {
+    margin-top: 12px;
+    width: 100%;
+    background: linear-gradient(180deg, #2c2c2f, #141416);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    box-sizing: border-box;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.12), 0 10px 22px -12px rgba(0,0,0,0.4);
+    transition: transform 140ms cubic-bezier(.2,.8,.3,1), box-shadow 140ms ease, opacity 140ms ease;
+  }
+  button:active, .btn:active { transform: scale(0.97); box-shadow: 0 1px 1px rgba(0,0,0,0.12); }
+  #home-btn {
+    background: rgba(255, 255, 255, 0.78);
+    color: var(--ink);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: none;
+  }
+  #home-btn:active { background: rgba(255, 255, 255, 0.95); }
+  .error { color: #b00020; font-size: 14px; margin-top: 10px; font-weight: 500; }
   .hidden { display: none; }
+
+  @keyframes materialize {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: reduced-fade 160ms ease both; }
+    @keyframes reduced-fade { from { opacity: 0; } to { opacity: 1; } }
+    button, .btn { transition: opacity 120ms ease; }
+    button:active, .btn:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    body { background: #f5f4f1; }
+    .card { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: rgba(0,0,0,0.1); }
+    input { background: #fff; }
+    #home-btn { background: #fff; }
+  }
+  @media (prefers-contrast: more) {
+    .card { background: #fff; border: 1px solid #000; box-shadow: none; }
+    button, .btn { background: #000; }
+    #home-btn { background: #fff; border: 1px solid #000; }
+  }
 </style>
 </head>
 <body>
@@ -24,6 +125,9 @@
     <div id="error" class="error hidden"></div>
   </div>
 <script>
+  // iOS Safari only runs :active styles when a touch listener exists somewhere in the page.
+  document.body.addEventListener("touchstart", function () {}, { passive: true });
+
   const input = document.getElementById("password");
   const btn = document.getElementById("login-btn");
   const errorBox = document.getElementById("error");

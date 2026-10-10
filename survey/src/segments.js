@@ -5,7 +5,7 @@ export const segments = {
   bookkeepers: {
     niche: "bookkeepers",
     intro:
-      "Ten quick questions, no more, about how bookkeeping work actually goes for you day to day. There's nothing to sign up for and nothing being sold here, this is pure research.",
+      "Quick survey, nothing more, about how bookkeeping work actually goes for you day to day. There’s nothing to sign up for and nothing being offered to you, this is pure research data.",
     baseline: [
       "What is the part of a typical client’s bookkeeping that eats the most of your time, and shouldn’t?",
       "Take me through exactly how you handle that today, step by step.",
@@ -17,7 +17,7 @@ export const segments = {
   "real-estate-agents": {
     niche: "real estate agents and brokers",
     intro:
-      "Ten quick questions, no more, about how handling listings and enquiries actually goes for you day to day. There's nothing to sign up for and nothing being sold here, this is pure research.",
+      "Quick survey, nothing more, about how handling listings and enquiries actually goes for you day to day. There’s nothing to sign up for and nothing being sold here, this is pure research data.",
     baseline: [
       "What is the part of handling a listing or a client enquiry that eats the most of your time, and shouldn’t?",
       "Take me through exactly how you handle that today, step by step.",

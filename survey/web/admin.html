@@ -20,6 +20,10 @@
   select, input[type="text"] { padding: 9px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #fff; }
   #link-gen input#ref-input { flex: 1; min-width: 160px; }
   #link-out { font-size: 13px; background: #fafafa; border-radius: 6px; padding: 8px 10px; margin-top: 10px; word-break: break-all; display: none; }
+  .chip { background: #fff; color: #1a1a1a; border: 1px solid #ddd; border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; }
+  .chip:hover { background: #f0f0f0; }
+  .chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  #delete-response-btn { background: #fff; color: #b00020; border: 1px solid #f0c0c0; margin-left: 8px; }
 
   .controls { display: flex; gap: 8px; flex-wrap: wrap; }
   .controls select { flex: 1; min-width: 130px; }
@@ -61,7 +65,8 @@
 
   <div id="link-gen" class="panel">
     <h2>Make a tagged link to send someone</h2>
-    <div class="row">
+    <div class="row" id="prefix-chips"></div>
+    <div class="row" style="margin-top:8px">
       <select id="segment-select"></select>
       <input id="ref-input" type="text" placeholder="Tag, e.g. the WhatsApp number" />
       <button id="generate-link-btn">Generate</button>
@@ -107,6 +112,47 @@
   const sortBy = document.getElementById("sort-by");
 
   let allResponses = [];
+
+  // Common country codes for WhatsApp numbers, picked for where Kirmi Studio actually
+  // sends outreach (Ireland, the US, and the usual EU/UK/UAE spread). Clicking one
+  // sets the dialling code at the start of the ref tag so the rest of the number can
+  // just be typed or pasted after it.
+  const COUNTRY_CODES = [
+    { code: "+353", label: "IE +353" },
+    { code: "+44", label: "UK +44" },
+    { code: "+1", label: "US +1" },
+    { code: "+34", label: "ES +34" },
+    { code: "+33", label: "FR +33" },
+    { code: "+971", label: "UAE +971" },
+    { code: "+49", label: "DE +49" },
+    { code: "+61", label: "AU +61" },
+  ];
+
+  // Longest code first, so stripping an existing prefix can't partly match a shorter
+  // one that happens to share its leading digit (e.g. +1 vs +971 both start with "+").
+  const CODES_BY_LENGTH_DESC = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+
+  function stripKnownPrefix(value) {
+    const trimmed = value.trim();
+    const match = CODES_BY_LENGTH_DESC.find((c) => trimmed.startsWith(c.code));
+    return match ? trimmed.slice(match.code.length).trim() : trimmed;
+  }
+
+  function renderPrefixChips() {
+    const el = document.getElementById("prefix-chips");
+    el.innerHTML = COUNTRY_CODES.map((c) => '<button type="button" class="chip" data-code="' + c.code + '">' + c.label + "</button>").join("");
+    el.querySelectorAll(".chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const refInput = document.getElementById("ref-input");
+        const code = btn.dataset.code;
+        const rest = stripKnownPrefix(refInput.value);
+        refInput.value = code + (rest ? " " + rest : "");
+        el.querySelectorAll(".chip").forEach((b) => b.classList.toggle("active", b === btn));
+        refInput.focus();
+        refInput.setSelectionRange(refInput.value.length, refInput.value.length);
+      });
+    });
+  }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -180,6 +226,7 @@
     ].filter(Boolean);
     const header =
       '<button id="close-detail">&larr; Back to list</button>' +
+      '<button id="delete-response-btn">Delete</button>' +
       "<h2>" + escapeHtml(r.respondent_name || "Unnamed respondent") + "</h2>" +
       '<div class="detail-header">' + metaBits.join(" &middot; ") + "</div>";
 
@@ -208,6 +255,14 @@
     document.getElementById("close-detail").addEventListener("click", () => {
       detailEl.classList.add("hidden");
       detailEl.innerHTML = "";
+    });
+    document.getElementById("delete-response-btn").addEventListener("click", async () => {
+      if (!window.confirm("Delete this response for good? This cannot be undone.")) return;
+      const delRes = await fetch("/api/admin/responses/" + id, { method: "DELETE" });
+      if (!delRes.ok) return;
+      detailEl.classList.add("hidden");
+      detailEl.innerHTML = "";
+      await loadResponses();
     });
     detailEl.scrollIntoView({ behavior: "smooth" });
   }
@@ -238,6 +293,7 @@
 
   [filterSegment, filterStatus, filterContact, sortBy].forEach((el) => el.addEventListener("change", applyFiltersAndSort));
 
+  renderPrefixChips();
   loadSegments();
   loadResponses();
 </script>

@@ -88,9 +88,9 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   const segment = getSegment(request.params.slug);
   if (!segment) return reply.code(404).send({ error: "unknown survey" });
 
-  const { responseId, questionNumber, questionText, answer } = request.body ?? {};
-  if (!responseId || !Number.isInteger(questionNumber) || !questionText || typeof answer !== "string" || !answer.trim()) {
-    return reply.code(400).send({ error: "responseId, questionNumber, questionText and a non-empty answer are required" });
+  const { responseId, questionNumber, answer } = request.body ?? {};
+  if (!responseId || !Number.isInteger(questionNumber) || typeof answer !== "string" || !answer.trim()) {
+    return reply.code(400).send({ error: "responseId, questionNumber and a non-empty answer are required" });
   }
 
   const response = await get(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`, [responseId, request.params.slug]);
@@ -132,7 +132,11 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
     return reply.code(409).send({ error: "question number does not match what this response is currently on" });
   }
 
+  // The question text is never trusted from the client: a baseline question's text is
+  // fixed for the niche, and a follow-up's text is whatever was actually generated and
+  // shown to this respondent, already stored on the response row for that reason.
   const kind = questionNumber <= BASELINE_COUNT ? "baseline" : "followup";
+  const questionText = kind === "baseline" ? segment.baseline[questionNumber - 1] : response.current_question_text;
   await run(
     `INSERT INTO answers (id, response_id, question_number, question_kind, question_text, answer_text, answered_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -226,6 +230,14 @@ app.get("/api/admin/responses/:id", { preHandler: requireAdmin }, async (request
   if (!response) return reply.code(404).send({ error: "unknown response" });
   const answers = await loadTranscript(request.params.id);
   return { response, answers };
+});
+
+app.delete("/api/admin/responses/:id", { preHandler: requireAdmin }, async (request, reply) => {
+  const response = await get(`SELECT id FROM responses WHERE id = ?`, [request.params.id]);
+  if (!response) return reply.code(404).send({ error: "unknown response" });
+  await run(`DELETE FROM answers WHERE response_id = ?`, [request.params.id]);
+  await run(`DELETE FROM responses WHERE id = ?`, [request.params.id]);
+  return { ok: true };
 });
 
 app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, reply) => {

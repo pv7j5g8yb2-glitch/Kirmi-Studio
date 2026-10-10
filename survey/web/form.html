@@ -260,7 +260,6 @@
     }
     const isReview = viewIndex !== null;
     const targetNumber = isReview ? history[viewIndex].number : current.number;
-    const targetText = isReview ? history[viewIndex].text : current.text;
     submitBtn.disabled = true;
     try {
       const res = await fetch("/api/s/" + slug + "/answer", {
@@ -269,7 +268,6 @@
         body: JSON.stringify({
           responseId,
           questionNumber: targetNumber,
-          questionText: targetText,
           answer,
         }),
       });

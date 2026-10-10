@@ -222,6 +222,28 @@
   let history = []; // [{number, text, answer}], one entry per question already answered
   let viewIndex = null; // null = showing the live current question; otherwise reviewing history[viewIndex]
 
+  // Remembers this browser's response for this niche, so a refresh or reopened link
+  // resumes instead of starting a second response. Per-niche key, scoped to this browser
+  // only, not a real identity check.
+  const storageKey = "survey:" + slug;
+  function saveResponseId(id) {
+    try {
+      localStorage.setItem(storageKey, id);
+    } catch (e) {}
+  }
+  function loadSavedResponseId() {
+    try {
+      return localStorage.getItem(storageKey);
+    } catch (e) {
+      return null;
+    }
+  }
+  function clearSavedResponseId() {
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
+  }
+
   function showError(message) {
     errorBox.textContent = message;
     errorBox.classList.remove("hidden");
@@ -293,7 +315,45 @@
     const data = await startRes.json();
     responseId = data.responseId;
     cap = data.cap;
+    saveResponseId(responseId);
     renderQuestion(data.question);
+  }
+
+  function renderDone(offerContact) {
+    introScreen.classList.add("hidden");
+    questionScreen.classList.add("hidden");
+    if (respondentName) {
+      doneScreen.querySelector("h1").textContent = "Thanks, " + respondentName + ".";
+    }
+    // Only offer the optional contact prompt right when they finish, not on every repeat
+    // visit to an already-completed response.
+    contactScreen.classList.toggle("hidden", !offerContact);
+    contactDone.classList.add("hidden");
+    doneScreen.classList.remove("hidden");
+  }
+
+  async function resume(savedResponseId) {
+    try {
+      const res = await fetch("/api/s/" + slug + "/response/" + savedResponseId);
+      if (!res.ok) {
+        clearSavedResponseId();
+        start();
+        return;
+      }
+      const data = await res.json();
+      responseId = savedResponseId;
+      cap = data.cap;
+      respondentName = data.respondentName;
+      history = data.transcript.map((t) => ({ number: t.number, text: t.text, answer: t.answer }));
+
+      if (data.status === "completed") {
+        renderDone(false);
+      } else {
+        renderQuestion(data.currentQuestion);
+      }
+    } catch (e) {
+      start();
+    }
   }
 
   async function submitAnswer() {
@@ -324,11 +384,7 @@
       const data = await res.json();
       if (isReview) history[viewIndex].answer = answer;
       if (data.done) {
-        questionScreen.classList.add("hidden");
-        if (respondentName) {
-          doneScreen.querySelector("h1").textContent = "Thanks, " + respondentName + ".";
-        }
-        doneScreen.classList.remove("hidden");
+        renderDone(true);
       } else {
         if (!isReview) history.push({ number: current.number, text: current.text, answer });
         renderQuestion(data.question);
@@ -393,7 +449,12 @@
     missingScreen.classList.remove("hidden");
     introScreen.classList.add("hidden");
   } else {
-    start();
+    const savedResponseId = loadSavedResponseId();
+    if (savedResponseId) {
+      resume(savedResponseId);
+    } else {
+      start();
+    }
   }
 })();
 </script>

@@ -66,6 +66,28 @@ app.get("/api/s/:slug", async (request, reply) => {
   return { niche: segment.niche, intro: segment.intro, cap: QUESTION_CAP };
 });
 
+// Lets the form resume a response already in progress or completed, so a page refresh
+// (or reopening the link) picks up exactly where the respondent left off instead of
+// starting over. The responseId itself is the only credential, same trust model already
+// used by /answer and /contact.
+app.get("/api/s/:slug/response/:responseId", async (request, reply) => {
+  const segment = getSegment(request.params.slug);
+  if (!segment) return reply.code(404).send({ error: "unknown survey" });
+
+  const response = await get(`SELECT * FROM responses WHERE id = ? AND segment_slug = ?`, [request.params.responseId, request.params.slug]);
+  if (!response) return reply.code(404).send({ error: "unknown response" });
+
+  const transcript = await loadTranscript(response.id);
+  return {
+    status: response.status,
+    respondentName: response.respondent_name,
+    cap: QUESTION_CAP,
+    currentQuestion:
+      response.status === "in_progress" ? { number: response.current_question_number, text: response.current_question_text } : null,
+    transcript: transcript.map((t) => ({ number: t.number, text: t.text, answer: t.answer })),
+  };
+});
+
 app.post("/api/s/:slug/start", async (request, reply) => {
   const segment = getSegment(request.params.slug);
   if (!segment) return reply.code(404).send({ error: "unknown survey" });

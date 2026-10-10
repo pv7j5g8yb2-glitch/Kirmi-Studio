@@ -34,6 +34,12 @@ object with that same structure, no other text before or after it, no markdown c
 fences.`;
 
 async function callGroq(systemPrompt, userPrompt, { json = false } = {}) {
+  // Without an explicit cap the provider's own default applies, which is comfortably
+  // enough for one short translated string but can truncate the full bundle (near 40
+  // strings as one JSON object), silently producing invalid JSON. A verbose target
+  // language (German's longer compound words, or a script that costs more tokens per
+  // character, like Chinese or Arabic) hits that ceiling before a terser one does, which
+  // is why a truncation failure can show up for one language and not another.
   const res = await fetch(GROQ_API_URL, {
     method: "POST",
     headers: {
@@ -42,6 +48,7 @@ async function callGroq(systemPrompt, userPrompt, { json = false } = {}) {
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
+      max_tokens: json ? 4096 : 1024,
       ...(json ? { response_format: { type: "json_object" } } : {}),
       messages: [
         { role: "system", content: systemPrompt },
@@ -105,19 +112,21 @@ export async function translateToEnglish(text, sourceLanguage) {
 // baseline questions) into one language in a single call, so every string in that language
 // reads consistently rather than being translated one at a time in isolation. Returns null
 // on failure or when no provider is configured, so the caller can fall back to English.
+// This result gets cached once it succeeds (see i18n.js) and every respondent in that
+// language reuses it from then on, so one retry after a transient failure (a rate limit,
+// a dropped connection) is worth the wait: it is paid once per language, ever, not per visit.
 export async function translateBundle(sourceBundle, targetLanguage) {
   if (PROVIDER === "none") return null;
-  try {
-    const out = await callProvider(
-      BUNDLE_SYSTEM_PROMPT,
-      `Target language: ${targetLanguage}\n\nJSON to translate:\n${JSON.stringify(sourceBundle)}`,
-      { json: true }
-    );
-    const parsed = JSON.parse(out);
-    return parsed;
-  } catch (err) {
-    console.error(`Bundle translation to ${targetLanguage} failed, falling back to English:`, err.message);
-    return null;
+  const userPrompt = `Target language: ${targetLanguage}\n\nJSON to translate:\n${JSON.stringify(sourceBundle)}`;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const out = await callProvider(BUNDLE_SYSTEM_PROMPT, userPrompt, { json: true });
+      return JSON.parse(out);
+    } catch (err) {
+      console.error(`Bundle translation to ${targetLanguage} failed on attempt ${attempt}:`, err.message);
+      if (attempt === 2) return null;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 }
 

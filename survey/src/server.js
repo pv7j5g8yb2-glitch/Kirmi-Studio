@@ -39,12 +39,20 @@ async function loadTranscript(responseId) {
 
 app.get("/healthz", async () => ({ ok: true }));
 
+// "Are you a:" needs a singular, personal label, not the plural category name segments.js
+// uses elsewhere (form.html's intro, the admin dashboard). Falls back to that category
+// name for any future niche added here without a custom label of its own.
+const HOMEPAGE_ROLE_LABELS = {
+  bookkeepers: "Bookkeeper",
+  "real-estate-agents": "Real estate agent, broker, or realtor",
+};
+
 app.get("/", async (request, reply) => {
   const links = listSegments()
-    .map(
-      (s) =>
-        `<li><a href="/s/${s.slug}"><span>${s.niche.charAt(0).toUpperCase() + s.niche.slice(1)}</span><span class="arrow">&rsaquo;</span></a></li>`
-    )
+    .map((s) => {
+      const label = HOMEPAGE_ROLE_LABELS[s.slug] || s.niche.charAt(0).toUpperCase() + s.niche.slice(1);
+      return `<li><a href="/s/${s.slug}"><span>${label}</span><span class="arrow">&rsaquo;</span></a></li>`;
+    })
     .join("");
   reply.type("text/html").send(`<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -146,7 +154,7 @@ app.get("/", async (request, reply) => {
 <body>
   <div class="card">
     <h1>Market Research</h1>
-    <p class="intro">This isn&rsquo;t a page for visitors, it&rsquo;s the survey tool itself. Live surveys:</p>
+    <p class="intro">Are you a:</p>
     <ul class="links">${links}</ul>
     <a class="admin-link" href="/admin/login">Admin login</a>
   </div>

@@ -9,7 +9,8 @@
   .card { width: 100%; max-width: 360px; background: #fff; border-radius: 12px; padding: 28px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   h1 { font-size: 18px; margin: 0 0 16px; }
   input { width: 100%; font-size: 16px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-  button { margin-top: 12px; width: 100%; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 15px; cursor: pointer; }
+  button, .btn { margin-top: 12px; width: 100%; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 15px; cursor: pointer; text-decoration: none; display: block; box-sizing: border-box; text-align: center; }
+  #home-btn { background: #fff; color: #1a1a1a; border: 1px solid #ddd; }
   .error { color: #b00020; font-size: 14px; margin-top: 10px; }
   .hidden { display: none; }
 </style>
@@ -19,6 +20,7 @@
     <h1>Survey admin</h1>
     <input id="password" type="password" placeholder="Password" autofocus />
     <button id="login-btn">Sign in</button>
+    <a id="home-btn" class="btn" href="/">Home</a>
     <div id="error" class="error hidden"></div>
   </div>
 <script>

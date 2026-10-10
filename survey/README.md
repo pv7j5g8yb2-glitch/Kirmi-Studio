@@ -1,4 +1,4 @@
-# Kirmi Survey
+# Market Research
 
 A small, self-contained tool for the PMF research survey. Separate from `platform/`,
 which is the DEIZ booking engine, this has nothing to do with that.

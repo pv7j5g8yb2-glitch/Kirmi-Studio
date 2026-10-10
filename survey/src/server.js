@@ -64,7 +64,8 @@ app.get("/", async (request, reply) => {
     .join("");
   reply.type("text/html").send(`<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Market Research</title>
+<title>Kirmi Studio: Quick Industry Survey</title>
+<meta name="description" content="A short, anonymous survey from Kirmi Studio for bookkeepers and real estate professionals. Nothing to sign up for, nothing for sale, just research.">
 <style>
   :root {
     color-scheme: light;
@@ -161,8 +162,8 @@ app.get("/", async (request, reply) => {
 </style></head>
 <body>
   <div class="card">
-    <h1>Market Research</h1>
-    <p class="intro">Are you a:</p>
+    <h1>Kirmi Studio</h1>
+    <p class="intro">Quick industry survey. Are you a:</p>
     <ul class="links">${links}</ul>
     <a class="admin-link" href="/admin/login">Admin login</a>
   </div>

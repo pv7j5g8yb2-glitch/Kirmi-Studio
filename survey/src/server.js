@@ -41,15 +41,117 @@ app.get("/healthz", async () => ({ ok: true }));
 
 app.get("/", async (request, reply) => {
   const links = listSegments()
-    .map((s) => `<li><a href="/s/${s.slug}">/s/${s.slug}</a> — ${s.niche}</li>`)
+    .map(
+      (s) =>
+        `<li><a href="/s/${s.slug}"><span>${s.niche.charAt(0).toUpperCase() + s.niche.slice(1)}</span><span class="arrow">&rsaquo;</span></a></li>`
+    )
     .join("");
   reply.type("text/html").send(`<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Research</title>
-<style>body{font-family:-apple-system,sans-serif;max-width:480px;margin:60px auto;padding:0 20px;color:#1a1a1a}
-a{color:#1a1a1a}li{margin:8px 0}</style></head>
-<body><h1>Market Research</h1><p>This isn't a page for visitors, it's the survey tool itself. Live surveys:</p>
-<ul>${links}</ul><p><a href="/admin/login">Admin login</a></p></body></html>`);
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #1a1a1a;
+    --ink-soft: #52535a;
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-edge: rgba(255, 255, 255, 0.95);
+    --radius-lg: 24px;
+    --radius-md: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-optical-sizing: auto;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 60px 16px;
+    min-height: 100vh;
+    background:
+      radial-gradient(1000px 600px at 8% -10%, rgba(255, 214, 196, 0.22), transparent 55%),
+      radial-gradient(900px 700px at 108% 10%, rgba(196, 214, 255, 0.2), transparent 55%),
+      radial-gradient(800px 600px at 50% 115%, rgba(205, 240, 222, 0.16), transparent 55%),
+      #f5f4f1;
+    background-attachment: fixed;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    height: fit-content;
+    background: var(--glass-bg);
+    backdrop-filter: blur(26px) saturate(180%);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    border: 1px solid var(--glass-border);
+    border-top-color: var(--glass-edge);
+    box-shadow: 0 20px 60px -24px rgba(20,20,30,0.28), 0 2px 10px rgba(20,20,30,0.06);
+    animation: materialize 380ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 10px; }
+  p.intro { color: var(--ink-soft); font-size: 14px; line-height: 1.55; margin: 0 0 18px; }
+  ul.links { list-style: none; margin: 0; padding: 0; }
+  ul.links li + li { margin-top: 8px; }
+  ul.links a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: transform 140ms cubic-bezier(.2,.8,.3,1), background 140ms ease;
+  }
+  ul.links a:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.95); }
+  ul.links .arrow { color: var(--ink-soft); }
+  .admin-link {
+    display: block;
+    margin-top: 18px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 8px;
+  }
+  .admin-link:active { color: var(--ink); }
+
+  @keyframes materialize {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: reduced-fade 160ms ease both; }
+    @keyframes reduced-fade { from { opacity: 0; } to { opacity: 1; } }
+    ul.links a { transition: opacity 120ms ease; }
+    ul.links a:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    body { background: #f5f4f1; }
+    .card { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: rgba(0,0,0,0.1); }
+    ul.links a { background: #fff; }
+  }
+  @media (prefers-contrast: more) {
+    .card { background: #fff; border: 1px solid #000; box-shadow: none; }
+    ul.links a { background: #fff; border: 1px solid #000; }
+  }
+</style></head>
+<body>
+  <div class="card">
+    <h1>Market Research</h1>
+    <p class="intro">This isn&rsquo;t a page for visitors, it&rsquo;s the survey tool itself. Live surveys:</p>
+    <ul class="links">${links}</ul>
+    <a class="admin-link" href="/admin/login">Admin login</a>
+  </div>
+<script>document.body.addEventListener("touchstart", function () {}, { passive: true });</script>
+</body></html>`);
 });
 
 // ---- respondent-facing survey ----

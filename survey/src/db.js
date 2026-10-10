@@ -21,7 +21,10 @@ await client.executeMultiple(`
     respondent_name TEXT,
     respondent_language TEXT,
     contact_phone TEXT,
-    contact_email TEXT
+    contact_email TEXT,
+    wants_updates TEXT,
+    problem_summary TEXT,
+    problem_summary_localized TEXT
   );
 
   CREATE TABLE IF NOT EXISTS answers (
@@ -51,6 +54,9 @@ await client.executeMultiple(`
 const migrations = [
   ["responses", "respondent_language", "TEXT"],
   ["responses", "current_question_text_localized", "TEXT"],
+  ["responses", "wants_updates", "TEXT"],
+  ["responses", "problem_summary", "TEXT"],
+  ["responses", "problem_summary_localized", "TEXT"],
   ["answers", "question_text_localized", "TEXT"],
   ["answers", "answer_text_original", "TEXT"],
 ];

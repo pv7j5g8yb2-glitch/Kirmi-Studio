@@ -152,12 +152,15 @@
   .card:hover { background: #fff; }
   .card:active { transform: scale(0.99); background: #fff; }
   .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card-top-right { display: flex; align-items: center; gap: 6px; }
   .card-name { font-weight: 600; font-size: 15px; letter-spacing: -0.005em; }
   .badge { font-size: 12px; font-weight: 600; letter-spacing: 0.01em; padding: 2px 9px; border-radius: var(--radius-sm); white-space: nowrap; }
   .badge-completed { background: #e6f4ea; color: #0a7a2f; }
   .badge-in_progress { background: #fdf0db; color: #a06a00; }
+  .badge-wants { background: #e9e6fb; color: #4b3fb0; }
   .card-meta { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
   .card-sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .card-problem { font-size: 12px; color: #4b3fb0; margin-top: 4px; font-style: italic; }
   .card-dropoff { font-size: 12px; color: #a06a00; margin-top: 6px; }
 
   #detail {
@@ -347,10 +350,12 @@
         const sub = [r.respondent_language ? escapeHtml(r.respondent_language) : "", r.source_ref ? "ref " + escapeHtml(r.source_ref) : "", contact]
           .filter(Boolean)
           .join(" &middot; ");
+        const wantsUpdates = r.wants_updates === "yes" ? '<span class="badge badge-wants">Wants updates</span>' : "";
         return (
           '<div class="card" data-id="' + r.id + '">' +
           '<div class="card-top"><span class="card-name">' + escapeHtml(r.respondent_name || "Unnamed") + '</span>' +
-          '<span class="badge badge-' + r.status + '">' + r.status.replace("_", " ") + "</span></div>" +
+          '<span class="card-top-right">' + wantsUpdates + '<span class="badge badge-' + r.status + '">' + r.status.replace("_", " ") + "</span></span></div>" +
+          (r.problem_summary ? '<div class="card-problem">' + escapeHtml(r.problem_summary) + "</div>" : "") +
           '<div class="card-meta">' + escapeHtml(r.segment_slug) + " &middot; " + new Date(r.started_at).toLocaleString() + " &middot; " + r.answer_count + " answered</div>" +
           (sub ? '<div class="card-sub">' + sub + "</div>" : "") +
           dropOff +
@@ -377,6 +382,7 @@
     const data = await res.json();
     const r = data.response;
     const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ");
+    const wantsLabel = r.wants_updates === "yes" ? "wants updates" : r.wants_updates === "no" ? "declined updates" : "";
     const metaBits = [
       escapeHtml(r.segment_slug),
       new Date(r.started_at).toLocaleString(),
@@ -384,12 +390,14 @@
       r.respondent_language ? escapeHtml(r.respondent_language) : "",
       r.source_ref ? "ref " + escapeHtml(r.source_ref) : "",
       contact,
+      wantsLabel,
     ].filter(Boolean);
     const header =
       '<button id="close-detail">&larr; Back to list</button>' +
       '<button id="delete-response-btn">Delete</button>' +
       "<h2>" + escapeHtml(r.respondent_name || "Unnamed respondent") + "</h2>" +
-      '<div class="detail-header">' + metaBits.join(" &middot; ") + "</div>";
+      '<div class="detail-header">' + metaBits.join(" &middot; ") + "</div>" +
+      (r.problem_summary ? '<div class="card-problem" style="margin-top:6px">Flagged problem: ' + escapeHtml(r.problem_summary) + "</div>" : "");
 
     const renderQA = (list) =>
       list

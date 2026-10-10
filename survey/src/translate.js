@@ -78,6 +78,12 @@ async function callProvider(systemPrompt, userPrompt, opts) {
   return null;
 }
 
+// Exposed so other modules that need the same Groq/Anthropic transport (the pain-point
+// summarizer, see summarize.js) do not duplicate it a third time. Callers still need their
+// own "none"-provider check (see translateProvider below) since this returns null rather
+// than throwing in that case.
+export { callProvider };
+
 // Translates one piece of text. Never throws: translation failing should never break a
 // respondent's survey or an admin's view, it should just fall back to the original text,
 // exactly the same resilience the adaptive follow-up questions already rely on.

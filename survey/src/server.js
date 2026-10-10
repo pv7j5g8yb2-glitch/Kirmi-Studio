@@ -9,6 +9,7 @@ import { run, get, all } from "./db.js";
 import { getSegment, listSegments, QUESTION_CAP, BASELINE_COUNT, ROLE_LABELS } from "./segments.js";
 import { decideNextQuestion } from "./followup.js";
 import { translateFromEnglish, translateToEnglish } from "./translate.js";
+import { summarizePainPoint } from "./summarize.js";
 import { getBundle } from "./i18n.js";
 import { checkPassword, requireAdmin, setAdminCookie, clearAdminCookie } from "./admin-auth.js";
 import { toCsv } from "./csv.js";
@@ -51,6 +52,22 @@ async function localizeQuestion(segment, slug, language, questionNumber, english
     return bundle.segments[slug]?.baseline?.[questionNumber - 1] || englishText;
   }
   return translateFromEnglish(englishText, language);
+}
+
+// Runs once, right when a response actually finishes, on the full transcript including
+// the answer that just completed it. Picks the one problem worth naming back to the
+// respondent on the thanks screen (see summarize.js for how "worth naming" is decided),
+// stores it, and hands the already-localized phrase back so the client has it the moment
+// the done screen renders, no second request needed.
+async function completeResponse({ segment, transcript, responseId, language }) {
+  const { en, localized } = await summarizePainPoint({ segment, transcript, language });
+  await run(`UPDATE responses SET status = 'completed', finished_at = ?, problem_summary = ?, problem_summary_localized = ? WHERE id = ?`, [
+    nowIso(),
+    en,
+    localized,
+    responseId,
+  ]);
+  return localized;
 }
 
 app.get("/healthz", async () => ({ ok: true }));
@@ -306,8 +323,8 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
       return { done: false, question: { number: pendingNumber, text: decision.question, localizedText } };
     }
 
-    await run(`UPDATE responses SET status = 'completed', finished_at = ? WHERE id = ?`, [nowIso(), responseId]);
-    return { done: true };
+    const problem = await completeResponse({ segment, transcript, responseId, language });
+    return { done: true, problem };
   }
 
   if (response.current_question_number !== questionNumber) {
@@ -357,8 +374,21 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
     return { done: false, question: nextQuestion };
   }
 
-  await run(`UPDATE responses SET status = 'completed', finished_at = ? WHERE id = ?`, [nowIso(), responseId]);
-  return { done: true };
+  const problem = await completeResponse({ segment, transcript, responseId, language });
+  return { done: true, problem };
+});
+
+app.post("/api/s/:slug/wants-updates", async (request, reply) => {
+  const { responseId, wantsUpdates } = request.body ?? {};
+  if (!responseId || typeof wantsUpdates !== "boolean") {
+    return reply.code(400).send({ error: "responseId and a boolean wantsUpdates are required" });
+  }
+
+  const response = await get(`SELECT id FROM responses WHERE id = ? AND segment_slug = ?`, [responseId, request.params.slug]);
+  if (!response) return reply.code(404).send({ error: "unknown response" });
+
+  await run(`UPDATE responses SET wants_updates = ? WHERE id = ?`, [wantsUpdates ? "yes" : "no", responseId]);
+  return { ok: true };
 });
 
 app.post("/api/s/:slug/contact", async (request, reply) => {
@@ -408,6 +438,7 @@ app.get("/api/admin/responses", { preHandler: requireAdmin }, async () => {
     `SELECT r.id, r.segment_slug, r.started_at, r.finished_at, r.status,
             r.current_question_number, r.current_question_text,
             r.source_ref, r.respondent_name, r.respondent_language, r.contact_phone, r.contact_email,
+            r.wants_updates, r.problem_summary,
             (SELECT COUNT(*) FROM answers a WHERE a.response_id = r.id) as answer_count
      FROM responses r ORDER BY r.started_at DESC`
   );
@@ -433,6 +464,7 @@ app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, r
   const rows = await all(
     `SELECT r.id as response_id, r.segment_slug, r.started_at, r.finished_at, r.status,
             r.source_ref, r.respondent_name, r.respondent_language, r.contact_phone, r.contact_email,
+            r.wants_updates, r.problem_summary,
             a.question_number, a.question_kind, a.question_text, a.answer_text
      FROM responses r
      LEFT JOIN answers a ON a.response_id = r.id
@@ -442,7 +474,8 @@ app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, r
   const csv = toCsv(
     [
       "response_id", "segment_slug", "started_at", "finished_at", "status", "source_ref", "respondent_name",
-      "respondent_language", "contact_phone", "contact_email", "question_number", "question_kind", "question_text", "answer_text",
+      "respondent_language", "contact_phone", "contact_email", "wants_updates", "problem_summary",
+      "question_number", "question_kind", "question_text", "answer_text",
     ],
     rows
   );

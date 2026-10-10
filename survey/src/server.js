@@ -191,6 +191,7 @@ app.get("/api/s/:slug/response/:responseId", async (request, reply) => {
   return {
     status: response.status,
     respondentName: response.respondent_name,
+    respondentLanguage: response.respondent_language,
     cap: QUESTION_CAP,
     currentQuestion:
       response.status === "in_progress" ? { number: response.current_question_number, text: response.current_question_text } : null,
@@ -206,11 +207,13 @@ app.post("/api/s/:slug/start", async (request, reply) => {
   const firstQuestion = { number: 1, text: segment.baseline[0] };
   const ref = typeof request.body?.ref === "string" ? request.body.ref.slice(0, 200) : null;
   const name = typeof request.body?.name === "string" && request.body.name.trim() ? request.body.name.trim().slice(0, 60) : null;
+  const language =
+    typeof request.body?.language === "string" && request.body.language.trim() ? request.body.language.trim().slice(0, 40) : null;
 
   await run(
-    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, source_ref, respondent_name)
-     VALUES (?, ?, ?, 'in_progress', ?, ?, ?, ?)`,
-    [id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, ref, name]
+    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, source_ref, respondent_name, respondent_language)
+     VALUES (?, ?, ?, 'in_progress', ?, ?, ?, ?, ?)`,
+    [id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, ref, name, language]
   );
 
   return { responseId: id, question: firstQuestion, cap: QUESTION_CAP };
@@ -350,7 +353,7 @@ app.get("/api/admin/responses", { preHandler: requireAdmin }, async () => {
   const responses = await all(
     `SELECT r.id, r.segment_slug, r.started_at, r.finished_at, r.status,
             r.current_question_number, r.current_question_text,
-            r.source_ref, r.respondent_name, r.contact_phone, r.contact_email,
+            r.source_ref, r.respondent_name, r.respondent_language, r.contact_phone, r.contact_email,
             (SELECT COUNT(*) FROM answers a WHERE a.response_id = r.id) as answer_count
      FROM responses r ORDER BY r.started_at DESC`
   );
@@ -375,7 +378,7 @@ app.delete("/api/admin/responses/:id", { preHandler: requireAdmin }, async (requ
 app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, reply) => {
   const rows = await all(
     `SELECT r.id as response_id, r.segment_slug, r.started_at, r.finished_at, r.status,
-            r.source_ref, r.respondent_name, r.contact_phone, r.contact_email,
+            r.source_ref, r.respondent_name, r.respondent_language, r.contact_phone, r.contact_email,
             a.question_number, a.question_kind, a.question_text, a.answer_text
      FROM responses r
      LEFT JOIN answers a ON a.response_id = r.id
@@ -385,7 +388,7 @@ app.get("/api/admin/export.csv", { preHandler: requireAdmin }, async (request, r
   const csv = toCsv(
     [
       "response_id", "segment_slug", "started_at", "finished_at", "status", "source_ref", "respondent_name",
-      "contact_phone", "contact_email", "question_number", "question_kind", "question_text", "answer_text",
+      "respondent_language", "contact_phone", "contact_email", "question_number", "question_kind", "question_text", "answer_text",
     ],
     rows
   );

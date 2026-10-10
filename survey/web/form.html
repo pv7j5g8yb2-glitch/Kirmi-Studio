@@ -47,7 +47,7 @@
   .progress { font-size: 13px; letter-spacing: 0.01em; color: var(--ink-soft); margin-bottom: 10px; font-weight: 500; }
   h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; margin: 0 0 12px; }
   p.intro { color: var(--ink-soft); line-height: 1.55; font-size: 15px; }
-  textarea, input[type="text"], input[type="tel"], input[type="email"] {
+  textarea, input[type="text"], input[type="tel"], input[type="email"], select {
     width: 100%;
     font-size: 16px;
     font-family: inherit;
@@ -60,9 +60,19 @@
     transition: box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
   }
   textarea { min-height: 110px; resize: vertical; }
-  textarea:focus, input:focus {
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    color-scheme: light;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' fill='none' stroke='%2352535a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+  }
+  select:invalid { color: var(--ink-soft); }
+  textarea:focus, input:focus, select:focus {
     outline: none;
-    background: rgba(255, 255, 255, 0.96);
+    background-color: rgba(255, 255, 255, 0.96);
     border-color: rgba(0, 0, 0, 0.16);
     box-shadow: 0 0 0 4px rgba(20, 20, 30, 0.08);
   }
@@ -130,6 +140,7 @@
     body { background: #f5f4f1; }
     .card { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; border-color: rgba(0,0,0,0.1); }
     textarea, input[type="text"], input[type="tel"], input[type="email"] { background: #fff; }
+    select { background-color: #fff; }
     #back-btn { background: #fff; }
   }
   @media (prefers-contrast: more) {
@@ -150,6 +161,46 @@
       <input id="name-input" type="text" placeholder="First name" />
       <div id="name-error" class="error hidden">Just your first name, go on.</div>
       <button id="name-continue-btn">Continue</button>
+    </div>
+
+    <div id="language-screen" class="hidden screen">
+      <p class="progress">Almost there</p>
+      <h1>What language do you speak?</h1>
+      <select id="language-select" required>
+        <option value="" disabled selected>Select a language</option>
+        <option value="Amharic">🇪🇹 Amharic</option>
+        <option value="Arabic">🇦🇪 Arabic</option>
+        <option value="Bengali">🇧🇩 Bengali</option>
+        <option value="Chinese (Mandarin)">🇨🇳 Chinese (Mandarin)</option>
+        <option value="Dutch">🇳🇱 Dutch</option>
+        <option value="English">🇬🇧 English</option>
+        <option value="Filipino">🇵🇭 Filipino</option>
+        <option value="French">🇫🇷 French</option>
+        <option value="German">🇩🇪 German</option>
+        <option value="Gujarati">🇮🇳 Gujarati</option>
+        <option value="Hindi">🇮🇳 Hindi</option>
+        <option value="Italian">🇮🇹 Italian</option>
+        <option value="Japanese">🇯🇵 Japanese</option>
+        <option value="Korean">🇰🇷 Korean</option>
+        <option value="Malayalam">🇮🇳 Malayalam</option>
+        <option value="Nepali">🇳🇵 Nepali</option>
+        <option value="Pashto">🇦🇫 Pashto</option>
+        <option value="Persian">🇮🇷 Persian</option>
+        <option value="Polish">🇵🇱 Polish</option>
+        <option value="Portuguese">🇵🇹 Portuguese</option>
+        <option value="Punjabi">🇮🇳 Punjabi</option>
+        <option value="Romanian">🇷🇴 Romanian</option>
+        <option value="Russian">🇷🇺 Russian</option>
+        <option value="Sinhala">🇱🇰 Sinhala</option>
+        <option value="Somali">🇸🇴 Somali</option>
+        <option value="Spanish">🇪🇸 Spanish</option>
+        <option value="Swahili">🇰🇪 Swahili</option>
+        <option value="Tamil">🇮🇳 Tamil</option>
+        <option value="Turkish">🇹🇷 Turkish</option>
+        <option value="Urdu">🇵🇰 Urdu</option>
+      </select>
+      <div id="language-error" class="error hidden">Go on, pick one.</div>
+      <button id="language-continue-btn">Continue</button>
     </div>
 
     <div id="hello-screen" class="hidden screen">
@@ -199,6 +250,8 @@
   const introScreen = document.getElementById("intro-screen");
   const nameScreen = document.getElementById("name-screen");
   const nameInput = document.getElementById("name-input");
+  const languageScreen = document.getElementById("language-screen");
+  const languageSelect = document.getElementById("language-select");
   const helloScreen = document.getElementById("hello-screen");
   const helloText = document.getElementById("hello-text");
   const questionScreen = document.getElementById("question-screen");
@@ -219,6 +272,7 @@
   let cap = 10;
   let current = null;
   let respondentName = null;
+  let respondentLanguage = null;
   let history = []; // [{number, text, answer}], one entry per question already answered
   let viewIndex = null; // null = showing the live current question; otherwise reviewing history[viewIndex]
 
@@ -298,6 +352,7 @@
 
   function showHelloThen(callback) {
     nameScreen.classList.add("hidden");
+    languageScreen.classList.add("hidden");
     helloText.textContent = "Hello, " + respondentName;
     helloScreen.classList.remove("hidden");
     setTimeout(() => {
@@ -310,7 +365,7 @@
     const startRes = await fetch("/api/s/" + slug + "/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref, name: respondentName }),
+      body: JSON.stringify({ ref, name: respondentName, language: respondentLanguage }),
     });
     const data = await startRes.json();
     responseId = data.responseId;
@@ -344,6 +399,7 @@
       responseId = savedResponseId;
       cap = data.cap;
       respondentName = data.respondentName;
+      respondentLanguage = data.respondentLanguage;
       history = data.transcript.map((t) => ({ number: t.number, text: t.text, answer: t.answer }));
 
       if (data.status === "completed") {
@@ -442,6 +498,20 @@
     }
     document.getElementById("name-error").classList.add("hidden");
     respondentName = name;
+    nameScreen.classList.add("hidden");
+    languageScreen.classList.remove("hidden");
+    languageSelect.focus();
+  });
+
+  document.getElementById("language-continue-btn").addEventListener("click", () => {
+    const language = languageSelect.value;
+    if (!language) {
+      document.getElementById("language-error").classList.remove("hidden");
+      languageSelect.focus();
+      return;
+    }
+    document.getElementById("language-error").classList.add("hidden");
+    respondentLanguage = language;
     showHelloThen(begin);
   });
 

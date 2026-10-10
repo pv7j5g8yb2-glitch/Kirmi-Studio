@@ -344,7 +344,9 @@
       .map((r) => {
         const dropOff = r.status === "completed" ? "" : '<div class="card-dropoff">Dropped at Q' + r.current_question_number + ": " + escapeHtml(r.current_question_text) + "</div>";
         const contact = [r.contact_phone, r.contact_email].filter(Boolean).map(escapeHtml).join(" / ");
-        const sub = [r.source_ref ? "ref " + escapeHtml(r.source_ref) : "", contact].filter(Boolean).join(" &middot; ");
+        const sub = [r.respondent_language ? escapeHtml(r.respondent_language) : "", r.source_ref ? "ref " + escapeHtml(r.source_ref) : "", contact]
+          .filter(Boolean)
+          .join(" &middot; ");
         return (
           '<div class="card" data-id="' + r.id + '">' +
           '<div class="card-top"><span class="card-name">' + escapeHtml(r.respondent_name || "Unnamed") + '</span>' +
@@ -379,6 +381,7 @@
       escapeHtml(r.segment_slug),
       new Date(r.started_at).toLocaleString(),
       r.status.replace("_", " "),
+      r.respondent_language ? escapeHtml(r.respondent_language) : "",
       r.source_ref ? "ref " + escapeHtml(r.source_ref) : "",
       contact,
     ].filter(Boolean);

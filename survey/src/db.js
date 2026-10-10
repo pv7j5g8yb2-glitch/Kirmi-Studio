@@ -18,6 +18,7 @@ await client.executeMultiple(`
     current_question_text TEXT NOT NULL,
     source_ref TEXT,
     respondent_name TEXT,
+    respondent_language TEXT,
     contact_phone TEXT,
     contact_email TEXT
   );
@@ -34,6 +35,15 @@ await client.executeMultiple(`
 
   CREATE INDEX IF NOT EXISTS answers_response_idx ON answers(response_id);
 `);
+
+// The CREATE TABLE above only takes effect on a brand new database. The live database
+// already exists without this column, so it needs adding explicitly here; the catch
+// makes this a no-op on every later startup once the column is already there.
+try {
+  await client.execute(`ALTER TABLE responses ADD COLUMN respondent_language TEXT`);
+} catch (err) {
+  if (!/duplicate column/i.test(err.message)) throw err;
+}
 
 export async function run(sql, args = []) {
   return client.execute({ sql, args });

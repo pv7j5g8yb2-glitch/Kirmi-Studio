@@ -16,6 +16,7 @@ await client.executeMultiple(`
     status TEXT NOT NULL DEFAULT 'in_progress',
     current_question_number INTEGER NOT NULL,
     current_question_text TEXT NOT NULL,
+    current_question_text_localized TEXT,
     source_ref TEXT,
     respondent_name TEXT,
     respondent_language TEXT,
@@ -29,20 +30,36 @@ await client.executeMultiple(`
     question_number INTEGER NOT NULL,
     question_kind TEXT NOT NULL,
     question_text TEXT NOT NULL,
+    question_text_localized TEXT,
     answer_text TEXT NOT NULL,
+    answer_text_original TEXT,
     answered_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS translation_bundles (
+    language TEXT PRIMARY KEY,
+    bundle TEXT NOT NULL,
+    created_at TEXT NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS answers_response_idx ON answers(response_id);
 `);
 
 // The CREATE TABLE above only takes effect on a brand new database. The live database
-// already exists without this column, so it needs adding explicitly here; the catch
-// makes this a no-op on every later startup once the column is already there.
-try {
-  await client.execute(`ALTER TABLE responses ADD COLUMN respondent_language TEXT`);
-} catch (err) {
-  if (!/duplicate column/i.test(err.message)) throw err;
+// already exists without these columns, so they need adding explicitly here; the catch
+// makes this a no-op on every later startup once a column is already there.
+const migrations = [
+  ["responses", "respondent_language", "TEXT"],
+  ["responses", "current_question_text_localized", "TEXT"],
+  ["answers", "question_text_localized", "TEXT"],
+  ["answers", "answer_text_original", "TEXT"],
+];
+for (const [table, column, type] of migrations) {
+  try {
+    await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  } catch (err) {
+    if (!/duplicate column/i.test(err.message)) throw err;
+  }
 }
 
 export async function run(sql, args = []) {

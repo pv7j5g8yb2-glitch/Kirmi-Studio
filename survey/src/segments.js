@@ -28,6 +28,15 @@ export const segments = {
   },
 };
 
+// A singular, personal label for a respondent in this niche, used on the homepage's "Are
+// you a:" links, where the page is addressing them directly rather than describing the
+// niche as a category. Falls back to the plural category name for any future niche added
+// here without a custom label of its own.
+export const ROLE_LABELS = {
+  bookkeepers: "Bookkeeper",
+  "real-estate-agents": "Real estate agent, broker, or realtor",
+};
+
 export function getSegment(slug) {
   return segments[slug] ?? null;
 }

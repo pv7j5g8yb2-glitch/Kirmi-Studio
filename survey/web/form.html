@@ -151,56 +151,54 @@
 </head>
 <body>
   <div class="card">
-    <div id="intro-screen" class="screen">
-      <p class="progress">Loading&hellip;</p>
-    </div>
-
-    <div id="name-screen" class="hidden screen">
-      <p class="progress">Almost there</p>
-      <h1>What should I call you?</h1>
-      <input id="name-input" type="text" placeholder="First name" />
-      <div id="name-error" class="error hidden">Just your first name, go on.</div>
-      <button id="name-continue-btn">Continue</button>
-    </div>
-
-    <div id="language-screen" class="hidden screen">
+    <div id="language-screen" class="screen">
       <p class="progress">Almost there</p>
       <h1>What language do you speak?</h1>
       <select id="language-select" required>
         <option value="" disabled selected>Select a language</option>
-        <option value="Amharic">🇪🇹 Amharic</option>
-        <option value="Arabic">🇦🇪 Arabic</option>
-        <option value="Bengali">🇧🇩 Bengali</option>
-        <option value="Chinese (Mandarin)">🇨🇳 Chinese (Mandarin)</option>
-        <option value="Dutch">🇳🇱 Dutch</option>
+        <option value="Amharic">🇪🇹 አማርኛ (Amharic)</option>
+        <option value="Arabic">🇦🇪 العربية (Arabic)</option>
+        <option value="Bengali">🇧🇩 বাংলা (Bengali)</option>
+        <option value="Chinese (Mandarin)">🇨🇳 中文 (Chinese)</option>
+        <option value="Dutch">🇳🇱 Nederlands (Dutch)</option>
         <option value="English">🇬🇧 English</option>
         <option value="Filipino">🇵🇭 Filipino</option>
-        <option value="French">🇫🇷 French</option>
-        <option value="German">🇩🇪 German</option>
-        <option value="Gujarati">🇮🇳 Gujarati</option>
-        <option value="Hindi">🇮🇳 Hindi</option>
-        <option value="Italian">🇮🇹 Italian</option>
-        <option value="Japanese">🇯🇵 Japanese</option>
-        <option value="Korean">🇰🇷 Korean</option>
-        <option value="Malayalam">🇮🇳 Malayalam</option>
-        <option value="Nepali">🇳🇵 Nepali</option>
-        <option value="Pashto">🇦🇫 Pashto</option>
-        <option value="Persian">🇮🇷 Persian</option>
-        <option value="Polish">🇵🇱 Polish</option>
-        <option value="Portuguese">🇵🇹 Portuguese</option>
-        <option value="Punjabi">🇮🇳 Punjabi</option>
-        <option value="Romanian">🇷🇴 Romanian</option>
-        <option value="Russian">🇷🇺 Russian</option>
-        <option value="Sinhala">🇱🇰 Sinhala</option>
-        <option value="Somali">🇸🇴 Somali</option>
-        <option value="Spanish">🇪🇸 Spanish</option>
-        <option value="Swahili">🇰🇪 Swahili</option>
-        <option value="Tamil">🇮🇳 Tamil</option>
-        <option value="Turkish">🇹🇷 Turkish</option>
-        <option value="Urdu">🇵🇰 Urdu</option>
+        <option value="French">🇫🇷 Français (French)</option>
+        <option value="German">🇩🇪 Deutsch (German)</option>
+        <option value="Gujarati">🇮🇳 ગુજરાતી (Gujarati)</option>
+        <option value="Hindi">🇮🇳 हिन्दी (Hindi)</option>
+        <option value="Italian">🇮🇹 Italiano (Italian)</option>
+        <option value="Japanese">🇯🇵 日本語 (Japanese)</option>
+        <option value="Korean">🇰🇷 한국어 (Korean)</option>
+        <option value="Malayalam">🇮🇳 മലയാളം (Malayalam)</option>
+        <option value="Nepali">🇳🇵 नेपाली (Nepali)</option>
+        <option value="Pashto">🇦🇫 پښتو (Pashto)</option>
+        <option value="Persian">🇮🇷 فارسی (Persian)</option>
+        <option value="Polish">🇵🇱 Polski (Polish)</option>
+        <option value="Portuguese">🇵🇹 Português (Portuguese)</option>
+        <option value="Punjabi">🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+        <option value="Romanian">🇷🇴 Română (Romanian)</option>
+        <option value="Russian">🇷🇺 Русский (Russian)</option>
+        <option value="Sinhala">🇱🇰 සිංහල (Sinhala)</option>
+        <option value="Somali">🇸🇴 Soomaali (Somali)</option>
+        <option value="Spanish">🇪🇸 Español (Spanish)</option>
+        <option value="Swahili">🇰🇪 Kiswahili (Swahili)</option>
+        <option value="Tamil">🇮🇳 தமிழ் (Tamil)</option>
+        <option value="Turkish">🇹🇷 Türkçe (Turkish)</option>
+        <option value="Urdu">🇵🇰 اردو (Urdu)</option>
       </select>
       <div id="language-error" class="error hidden">Go on, pick one.</div>
       <button id="language-continue-btn">Continue</button>
+    </div>
+
+    <div id="intro-screen" class="hidden screen"></div>
+
+    <div id="name-screen" class="hidden screen">
+      <p class="progress" id="name-progress">Almost there</p>
+      <h1 id="name-heading">What should I call you?</h1>
+      <input id="name-input" type="text" placeholder="First name" />
+      <div id="name-error" class="error hidden">Just your first name, go on.</div>
+      <button id="name-continue-btn">Continue</button>
     </div>
 
     <div id="hello-screen" class="hidden screen">
@@ -220,11 +218,11 @@
     </div>
 
     <div id="done-screen" class="hidden thanks screen">
-      <h1>Thanks, genuinely.</h1>
-      <p>That&rsquo;s everything. This goes straight into research, nothing else happens with it.</p>
+      <h1 id="done-heading">Thanks, genuinely.</h1>
+      <p id="done-body">That&rsquo;s everything. This goes straight into research, nothing else happens with it.</p>
       <div id="contact-screen">
-        <p class="progress">Totally optional</p>
-        <p class="intro">If this turns into something worth telling you about, can I follow up? Leave this blank and skip it if you would rather not.</p>
+        <p class="progress" id="contact-progress">Totally optional</p>
+        <p class="intro" id="contact-intro">If this turns into something worth telling you about, can I follow up? Leave this blank and skip it if you would rather not.</p>
         <input id="contact-phone" type="tel" placeholder="Phone (optional)" />
         <input id="contact-email" type="email" placeholder="Email (optional)" style="margin-top:8px" />
         <div style="margin-top:12px">
@@ -236,8 +234,8 @@
     </div>
 
     <div id="missing-screen" class="hidden screen">
-      <h1>That link isn&rsquo;t quite right</h1>
-      <p>This survey couldn&rsquo;t be found.</p>
+      <h1 id="missing-heading">That link isn&rsquo;t quite right</h1>
+      <p id="missing-body">This survey couldn&rsquo;t be found.</p>
     </div>
   </div>
 
@@ -247,11 +245,11 @@
   document.body.addEventListener("touchstart", function () {}, { passive: true });
 
   const slug = window.location.pathname.split("/").filter(Boolean)[1];
+  const languageScreen = document.getElementById("language-screen");
+  const languageSelect = document.getElementById("language-select");
   const introScreen = document.getElementById("intro-screen");
   const nameScreen = document.getElementById("name-screen");
   const nameInput = document.getElementById("name-input");
-  const languageScreen = document.getElementById("language-screen");
-  const languageSelect = document.getElementById("language-select");
   const helloScreen = document.getElementById("hello-screen");
   const helloText = document.getElementById("hello-text");
   const questionScreen = document.getElementById("question-screen");
@@ -268,13 +266,39 @@
   const contactDone = document.getElementById("contact-done");
   const ref = new URLSearchParams(window.location.search).get("ref");
 
+  // Only used if the /api/i18n fetch itself fails outright (a network error, not a
+  // translation failure, which the server already falls back to English for on its own).
+  // Mirrors src/i18n.js's SOURCE_BUNDLE.ui so the survey still reads correctly in English
+  // rather than showing blank chrome.
+  const UI_FALLBACK = {
+    before_you_start: "Before you start", start_button: "Start", name_progress: "Almost there",
+    name_heading: "What should I call you?", name_placeholder: "First name", name_error: "Just your first name, go on.",
+    continue_button: "Continue", hello_greeting: "Hello, {name}", question_progress: "Question {number} of up to {cap}",
+    review_progress: "Question {number}", review_note: "Reviewing an earlier answer, save to go back to where you were.",
+    answer_placeholder: "Type your answer here", answer_error_empty: "Go on, give it a line or two.",
+    next_button: "Next", save_button: "Save", back_button: "Back", done_heading_default: "Thanks, genuinely.",
+    done_heading_named: "Thanks, {name}.", done_body: "That’s everything. This goes straight into research, nothing else happens with it.",
+    contact_progress: "Totally optional",
+    contact_intro: "If this turns into something worth telling you about, can I follow up? Leave this blank and skip it if you would rather not.",
+    contact_phone_placeholder: "Phone (optional)", contact_email_placeholder: "Email (optional)", contact_send_button: "Send",
+    contact_skip_button: "Skip", contact_done: "Got it, thanks.", missing_heading: "That link isn’t quite right",
+    missing_body: "This survey couldn’t be found.", generic_error: "Something went wrong, try again.",
+  };
+
   let responseId = null;
   let cap = 10;
   let current = null;
   let respondentName = null;
   let respondentLanguage = null;
-  let history = []; // [{number, text, answer}], one entry per question already answered
+  let bundle = null; // { ui, segments } for the respondent's chosen language, or English
+  let history = []; // [{number, text, localizedText, answer}], one entry per question already answered
   let viewIndex = null; // null = showing the live current question; otherwise reviewing history[viewIndex]
+
+  function t(key, vars) {
+    let s = (bundle && bundle.ui && bundle.ui[key]) || UI_FALLBACK[key] || "";
+    if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+    return s;
+  }
 
   // Remembers this browser's response for this niche, so a refresh or reopened link
   // resumes instead of starting a second response. Per-niche key, scoped to this browser
@@ -303,17 +327,46 @@
     errorBox.classList.remove("hidden");
   }
 
+  // Applies every fixed string for the chosen language to screens other than the language
+  // picker itself (which has to stay in English, or be unreadable to half its own
+  // purpose: nobody can read instructions written in a language they have not picked
+  // yet). Called once, right after the bundle for that language is fetched, before any
+  // of these screens are ever shown.
+  function applyBundle() {
+    document.getElementById("name-progress").textContent = t("name_progress");
+    document.getElementById("name-heading").textContent = t("name_heading");
+    nameInput.placeholder = t("name_placeholder");
+    document.getElementById("name-error").textContent = t("name_error");
+    document.getElementById("name-continue-btn").textContent = t("continue_button");
+
+    reviewNote.textContent = t("review_note");
+    answerInput.placeholder = t("answer_placeholder");
+    backBtn.textContent = t("back_button");
+
+    document.getElementById("done-body").textContent = t("done_body");
+    document.getElementById("contact-progress").textContent = t("contact_progress");
+    document.getElementById("contact-intro").textContent = t("contact_intro");
+    document.getElementById("contact-phone").placeholder = t("contact_phone_placeholder");
+    document.getElementById("contact-email").placeholder = t("contact_email_placeholder");
+    document.getElementById("contact-send-btn").textContent = t("contact_send_button");
+    document.getElementById("contact-skip-btn").textContent = t("contact_skip_button");
+    document.getElementById("contact-done").textContent = t("contact_done");
+
+    document.getElementById("missing-heading").textContent = t("missing_heading");
+    document.getElementById("missing-body").textContent = t("missing_body");
+  }
+
   function renderQuestion(question) {
     current = question;
     viewIndex = null;
-    progressLabel.textContent = "Question " + question.number + " of up to " + cap;
+    progressLabel.textContent = t("question_progress", { number: question.number, cap: cap });
     reviewNote.classList.add("hidden");
-    questionText.textContent = question.text;
+    questionText.textContent = question.localizedText || question.text;
     answerInput.value = "";
     errorBox.classList.add("hidden");
     introScreen.classList.add("hidden");
     questionScreen.classList.remove("hidden");
-    submitBtn.textContent = "Next";
+    submitBtn.textContent = t("next_button");
     backBtn.classList.toggle("hidden", history.length === 0);
     answerInput.focus();
   }
@@ -321,28 +374,30 @@
   function renderReview(index) {
     viewIndex = index;
     const entry = history[index];
-    progressLabel.textContent = "Question " + entry.number;
+    progressLabel.textContent = t("review_progress", { number: entry.number });
     reviewNote.classList.remove("hidden");
-    questionText.textContent = entry.text;
+    questionText.textContent = entry.localizedText || entry.text;
     answerInput.value = entry.answer;
     errorBox.classList.add("hidden");
-    submitBtn.textContent = "Save";
+    submitBtn.textContent = t("save_button");
     backBtn.classList.toggle("hidden", index === 0);
     answerInput.focus();
   }
 
-  async function start() {
-    const metaRes = await fetch("/api/s/" + slug);
-    if (!metaRes.ok) {
+  // Builds the intro screen straight from the already-fetched bundle, no extra request:
+  // the bundle already carries every niche's title, intro, and baseline questions.
+  function renderIntro() {
+    const seg = (bundle && bundle.segments && bundle.segments[slug]) || null;
+    if (!seg) {
       missingScreen.classList.remove("hidden");
-      introScreen.classList.add("hidden");
+      languageScreen.classList.add("hidden");
       return;
     }
-    const meta = await metaRes.json();
-    cap = meta.cap;
+    cap = (bundle && bundle.cap) || cap;
     introScreen.innerHTML =
-      '<p class="progress">Before you start</p><h1>' + meta.niche.charAt(0).toUpperCase() + meta.niche.slice(1) + '</h1><p class="intro">' +
-      meta.intro + '</p><button id="start-btn">Start</button>';
+      '<p class="progress">' + t("before_you_start") + "</p><h1>" + seg.title + '</h1><p class="intro">' + seg.intro +
+      "</p><button id=\"start-btn\">" + t("start_button") + "</button>";
+    introScreen.classList.remove("hidden");
     document.getElementById("start-btn").addEventListener("click", () => {
       introScreen.classList.add("hidden");
       nameScreen.classList.remove("hidden");
@@ -350,10 +405,21 @@
     });
   }
 
+  async function loadLanguage(language) {
+    respondentLanguage = language;
+    try {
+      const res = await fetch("/api/i18n/" + encodeURIComponent(language));
+      bundle = res.ok ? await res.json() : null;
+    } catch (e) {
+      bundle = null;
+    }
+    applyBundle();
+  }
+
   function showHelloThen(callback) {
-    nameScreen.classList.add("hidden");
     languageScreen.classList.add("hidden");
-    helloText.textContent = "Hello, " + respondentName;
+    nameScreen.classList.add("hidden");
+    helloText.textContent = t("hello_greeting", { name: respondentName });
     helloScreen.classList.remove("hidden");
     setTimeout(() => {
       helloScreen.classList.add("hidden");
@@ -377,9 +443,9 @@
   function renderDone(offerContact) {
     introScreen.classList.add("hidden");
     questionScreen.classList.add("hidden");
-    if (respondentName) {
-      doneScreen.querySelector("h1").textContent = "Thanks, " + respondentName + ".";
-    }
+    document.getElementById("done-heading").textContent = respondentName
+      ? t("done_heading_named", { name: respondentName })
+      : t("done_heading_default");
     // Only offer the optional contact prompt right when they finish, not on every repeat
     // visit to an already-completed response.
     contactScreen.classList.toggle("hidden", !offerContact);
@@ -392,30 +458,31 @@
       const res = await fetch("/api/s/" + slug + "/response/" + savedResponseId);
       if (!res.ok) {
         clearSavedResponseId();
-        start();
+        showLanguagePicker();
         return;
       }
       const data = await res.json();
       responseId = savedResponseId;
       cap = data.cap;
       respondentName = data.respondentName;
-      respondentLanguage = data.respondentLanguage;
-      history = data.transcript.map((t) => ({ number: t.number, text: t.text, answer: t.answer }));
+      await loadLanguage(data.respondentLanguage || "English");
+      history = data.transcript.map((entry) => ({ number: entry.number, text: entry.text, localizedText: entry.localizedText, answer: entry.answer }));
 
+      languageScreen.classList.add("hidden");
       if (data.status === "completed") {
         renderDone(false);
       } else {
         renderQuestion(data.currentQuestion);
       }
     } catch (e) {
-      start();
+      showLanguagePicker();
     }
   }
 
   async function submitAnswer() {
     const answer = answerInput.value.trim();
     if (!answer) {
-      showError("Go on, give it a line or two.");
+      showError(t("answer_error_empty"));
       return;
     }
     const isReview = viewIndex !== null;
@@ -433,7 +500,7 @@
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        showError(body.error || "Something went wrong, try again.");
+        showError(body.error || t("generic_error"));
         submitBtn.disabled = false;
         return;
       }
@@ -442,7 +509,7 @@
       if (data.done) {
         renderDone(true);
       } else {
-        if (!isReview) history.push({ number: current.number, text: current.text, answer });
+        if (!isReview) history.push({ number: current.number, text: current.text, localizedText: current.localizedText, answer });
         renderQuestion(data.question);
       }
     } finally {
@@ -498,12 +565,10 @@
     }
     document.getElementById("name-error").classList.add("hidden");
     respondentName = name;
-    nameScreen.classList.add("hidden");
-    languageScreen.classList.remove("hidden");
-    languageSelect.focus();
+    showHelloThen(begin);
   });
 
-  document.getElementById("language-continue-btn").addEventListener("click", () => {
+  document.getElementById("language-continue-btn").addEventListener("click", async () => {
     const language = languageSelect.value;
     if (!language) {
       document.getElementById("language-error").classList.remove("hidden");
@@ -511,20 +576,35 @@
       return;
     }
     document.getElementById("language-error").classList.add("hidden");
-    respondentLanguage = language;
-    showHelloThen(begin);
+    const btn = document.getElementById("language-continue-btn");
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Loading…";
+    await loadLanguage(language);
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    languageScreen.classList.add("hidden");
+    renderIntro();
   });
+
+  function showLanguagePicker() {
+    languageScreen.classList.remove("hidden");
+    introScreen.classList.add("hidden");
+    nameScreen.classList.add("hidden");
+    questionScreen.classList.add("hidden");
+    doneScreen.classList.add("hidden");
+    missingScreen.classList.add("hidden");
+  }
 
   if (!slug) {
     missingScreen.classList.remove("hidden");
-    introScreen.classList.add("hidden");
+    languageScreen.classList.add("hidden");
   } else {
     const savedResponseId = loadSavedResponseId();
     if (savedResponseId) {
       resume(savedResponseId);
-    } else {
-      start();
     }
+    // else: the language picker is already the visible screen by default, nothing to do.
   }
 })();
 </script>

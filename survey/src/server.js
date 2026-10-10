@@ -6,8 +6,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { run, get, all } from "./db.js";
-import { getSegment, listSegments, QUESTION_CAP, BASELINE_COUNT } from "./segments.js";
+import { getSegment, listSegments, QUESTION_CAP, BASELINE_COUNT, ROLE_LABELS } from "./segments.js";
 import { decideNextQuestion } from "./followup.js";
+import { translateFromEnglish, translateToEnglish } from "./translate.js";
+import { getBundle } from "./i18n.js";
 import { checkPassword, requireAdmin, setAdminCookie, clearAdminCookie } from "./admin-auth.js";
 import { toCsv } from "./csv.js";
 
@@ -31,26 +33,32 @@ function nowIso() {
 
 async function loadTranscript(responseId) {
   return all(
-    `SELECT question_number as number, question_kind as kind, question_text as text, answer_text as answer
+    `SELECT question_number as number, question_kind as kind, question_text as text,
+            question_text_localized as localizedText, answer_text as answer, answer_text_original as answerOriginal
      FROM answers WHERE response_id = ? ORDER BY question_number ASC`,
     [responseId]
   );
 }
 
-app.get("/healthz", async () => ({ ok: true }));
+// Baseline questions are translated once and cached as part of the static bundle (see
+// i18n.js); an adaptive follow-up is unique to this response, so it is translated on the
+// spot, right after the English master is decided by the completely untouched logic in
+// followup.js. Returns the same text back when the language is English or unset.
+async function localizeQuestion(segment, slug, language, questionNumber, englishText) {
+  if (!language || language === "English") return englishText;
+  if (questionNumber <= BASELINE_COUNT) {
+    const bundle = await getBundle(language);
+    return bundle.segments[slug]?.baseline?.[questionNumber - 1] || englishText;
+  }
+  return translateFromEnglish(englishText, language);
+}
 
-// "Are you a:" needs a singular, personal label, not the plural category name segments.js
-// uses elsewhere (form.html's intro, the admin dashboard). Falls back to that category
-// name for any future niche added here without a custom label of its own.
-const HOMEPAGE_ROLE_LABELS = {
-  bookkeepers: "Bookkeeper",
-  "real-estate-agents": "Real estate agent, broker, or realtor",
-};
+app.get("/healthz", async () => ({ ok: true }));
 
 app.get("/", async (request, reply) => {
   const links = listSegments()
     .map((s) => {
-      const label = HOMEPAGE_ROLE_LABELS[s.slug] || s.niche.charAt(0).toUpperCase() + s.niche.slice(1);
+      const label = ROLE_LABELS[s.slug] || s.niche.charAt(0).toUpperCase() + s.niche.slice(1);
       return `<li><a href="/s/${s.slug}"><span>${label}</span><span class="arrow">&rsaquo;</span></a></li>`;
     })
     .join("");
@@ -170,10 +178,13 @@ app.get("/s/:slug", async (request, reply) => {
   reply.type("text/html").send(formHtml);
 });
 
-app.get("/api/s/:slug", async (request, reply) => {
-  const segment = getSegment(request.params.slug);
-  if (!segment) return reply.code(404).send({ error: "unknown survey" });
-  return { niche: segment.niche, intro: segment.intro, cap: QUESTION_CAP };
+// Serves the whole static bundle (fixed interface text plus every niche's title, intro,
+// and baseline questions) for one language, generated once and cached from here on (see
+// i18n.js). The client fetches this for every language, English included, so there is a
+// single code path: for English it is just SOURCE_BUNDLE, returned instantly.
+app.get("/api/i18n/:language", async (request, reply) => {
+  const bundle = await getBundle(request.params.language);
+  return { ui: bundle.ui, segments: bundle.segments, cap: QUESTION_CAP };
 });
 
 // Lets the form resume a response already in progress or completed, so a page refresh
@@ -194,8 +205,19 @@ app.get("/api/s/:slug/response/:responseId", async (request, reply) => {
     respondentLanguage: response.respondent_language,
     cap: QUESTION_CAP,
     currentQuestion:
-      response.status === "in_progress" ? { number: response.current_question_number, text: response.current_question_text } : null,
-    transcript: transcript.map((t) => ({ number: t.number, text: t.text, answer: t.answer })),
+      response.status === "in_progress"
+        ? {
+            number: response.current_question_number,
+            text: response.current_question_text,
+            localizedText: response.current_question_text_localized || response.current_question_text,
+          }
+        : null,
+    transcript: transcript.map((t) => ({
+      number: t.number,
+      text: t.text,
+      localizedText: t.localizedText || t.text,
+      answer: t.answerOriginal || t.answer,
+    })),
   };
 });
 
@@ -204,19 +226,21 @@ app.post("/api/s/:slug/start", async (request, reply) => {
   if (!segment) return reply.code(404).send({ error: "unknown survey" });
 
   const id = randomUUID();
-  const firstQuestion = { number: 1, text: segment.baseline[0] };
   const ref = typeof request.body?.ref === "string" ? request.body.ref.slice(0, 200) : null;
   const name = typeof request.body?.name === "string" && request.body.name.trim() ? request.body.name.trim().slice(0, 60) : null;
   const language =
     typeof request.body?.language === "string" && request.body.language.trim() ? request.body.language.trim().slice(0, 40) : null;
 
+  const firstQuestion = { number: 1, text: segment.baseline[0] };
+  const localizedText = await localizeQuestion(segment, request.params.slug, language, firstQuestion.number, firstQuestion.text);
+
   await run(
-    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, source_ref, respondent_name, respondent_language)
-     VALUES (?, ?, ?, 'in_progress', ?, ?, ?, ?, ?)`,
-    [id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, ref, name, language]
+    `INSERT INTO responses (id, segment_slug, started_at, status, current_question_number, current_question_text, current_question_text_localized, source_ref, respondent_name, respondent_language)
+     VALUES (?, ?, ?, 'in_progress', ?, ?, ?, ?, ?, ?)`,
+    [id, request.params.slug, nowIso(), firstQuestion.number, firstQuestion.text, localizedText, ref, name, language]
   );
 
-  return { responseId: id, question: firstQuestion, cap: QUESTION_CAP };
+  return { responseId: id, question: { ...firstQuestion, localizedText }, cap: QUESTION_CAP };
 });
 
 app.post("/api/s/:slug/answer", async (request, reply) => {
@@ -239,15 +263,32 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   // about to answer next might have been generated from the content they just changed,
   // if so it gets regenerated from the corrected transcript before they see it again,
   // so it never visibly references something they clearly just went back and edited.
+  const language = response.respondent_language;
+  // The decision engine in followup.js, including its price and product-pitch guardrails,
+  // only ever reasons over English, exactly as proven before translation existed. A
+  // non-English answer is translated to English here before it touches any of that, and
+  // the respondent's own original wording is kept alongside it, untouched, only to be
+  // shown back to them.
+  const answerOriginal = answer.trim();
+  const answerEnglish = await translateToEnglish(answerOriginal, language);
+
   if (questionNumber < response.current_question_number) {
     const existing = await get(`SELECT id FROM answers WHERE response_id = ? AND question_number = ?`, [responseId, questionNumber]);
     if (!existing) return reply.code(404).send({ error: "no earlier answer at that question number" });
-    await run(`UPDATE answers SET answer_text = ?, answered_at = ? WHERE id = ?`, [answer.trim(), nowIso(), existing.id]);
+    await run(`UPDATE answers SET answer_text = ?, answer_text_original = ?, answered_at = ? WHERE id = ?`, [
+      answerEnglish,
+      answerOriginal,
+      nowIso(),
+      existing.id,
+    ]);
 
     const pendingNumber = response.current_question_number;
     if (pendingNumber <= BASELINE_COUNT) {
       // Baseline questions are fixed text for everyone, nothing to regenerate.
-      return { done: false, question: { number: pendingNumber, text: response.current_question_text } };
+      return {
+        done: false,
+        question: { number: pendingNumber, text: response.current_question_text, localizedText: response.current_question_text_localized },
+      };
     }
 
     const remaining = QUESTION_CAP - (pendingNumber - 1);
@@ -255,8 +296,13 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
     const decision = await decideNextQuestion({ segment, transcript, remaining });
 
     if (decision.continue && decision.question) {
-      await run(`UPDATE responses SET current_question_text = ? WHERE id = ?`, [decision.question, responseId]);
-      return { done: false, question: { number: pendingNumber, text: decision.question } };
+      const localizedText = await localizeQuestion(segment, request.params.slug, language, pendingNumber, decision.question);
+      await run(`UPDATE responses SET current_question_text = ?, current_question_text_localized = ? WHERE id = ?`, [
+        decision.question,
+        localizedText,
+        responseId,
+      ]);
+      return { done: false, question: { number: pendingNumber, text: decision.question, localizedText } };
     }
 
     await run(`UPDATE responses SET status = 'completed', finished_at = ? WHERE id = ?`, [nowIso(), responseId]);
@@ -272,18 +318,22 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   // shown to this respondent, already stored on the response row for that reason.
   const kind = questionNumber <= BASELINE_COUNT ? "baseline" : "followup";
   const questionText = kind === "baseline" ? segment.baseline[questionNumber - 1] : response.current_question_text;
+  const questionTextLocalized = response.current_question_text_localized;
   await run(
-    `INSERT INTO answers (id, response_id, question_number, question_kind, question_text, answer_text, answered_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [randomUUID(), responseId, questionNumber, kind, questionText, answer.trim(), nowIso()]
+    `INSERT INTO answers (id, response_id, question_number, question_kind, question_text, question_text_localized, answer_text, answer_text_original, answered_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [randomUUID(), responseId, questionNumber, kind, questionText, questionTextLocalized, answerEnglish, answerOriginal, nowIso()]
   );
 
   if (questionNumber < BASELINE_COUNT) {
     const nextNumber = questionNumber + 1;
-    const nextQuestion = { number: nextNumber, text: segment.baseline[nextNumber - 1] };
-    await run(`UPDATE responses SET current_question_number = ?, current_question_text = ? WHERE id = ?`, [
+    const nextText = segment.baseline[nextNumber - 1];
+    const localizedText = await localizeQuestion(segment, request.params.slug, language, nextNumber, nextText);
+    const nextQuestion = { number: nextNumber, text: nextText, localizedText };
+    await run(`UPDATE responses SET current_question_number = ?, current_question_text = ?, current_question_text_localized = ? WHERE id = ?`, [
       nextQuestion.number,
       nextQuestion.text,
+      localizedText,
       responseId,
     ]);
     return { done: false, question: nextQuestion };
@@ -294,10 +344,13 @@ app.post("/api/s/:slug/answer", async (request, reply) => {
   const decision = await decideNextQuestion({ segment, transcript, remaining });
 
   if (decision.continue && decision.question && questionNumber < QUESTION_CAP) {
-    const nextQuestion = { number: questionNumber + 1, text: decision.question };
-    await run(`UPDATE responses SET current_question_number = ?, current_question_text = ? WHERE id = ?`, [
+    const nextNumber = questionNumber + 1;
+    const localizedText = await localizeQuestion(segment, request.params.slug, language, nextNumber, decision.question);
+    const nextQuestion = { number: nextNumber, text: decision.question, localizedText };
+    await run(`UPDATE responses SET current_question_number = ?, current_question_text = ?, current_question_text_localized = ? WHERE id = ?`, [
       nextQuestion.number,
       nextQuestion.text,
+      localizedText,
       responseId,
     ]);
     return { done: false, question: nextQuestion };
